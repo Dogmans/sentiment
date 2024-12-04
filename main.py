@@ -1,6 +1,6 @@
 # main.py
 import os
-from sentiment_analysis import TwitterSentiment, RedditSentiment, MotleyFoolSentiment, MsnMoneySentiment
+from sentiment_analysis import TwitterSentiment, RedditSentiment, MotleyFoolSentiment, MsnMoneySentiment, YahooFinanceSentiment
 
 # Define Twitter API credentials
 TWITTER_API_KEY = os.getenv('TWITTER_API_KEY')
@@ -15,17 +15,22 @@ REDDIT_USER_AGENT = os.getenv('REDDIT_USER_AGENT')
 
 def main():
     # List of sentiment analysis classes
+    # sentiment_classes = [
+    #     TwitterSentiment(
+    #         TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
+    #     ),
+    #     RedditSentiment(
+    #         REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USER_AGENT
+    #     ),
+    #     MotleyFoolSentiment(),
+    #     MsnMoneySentiment(),
+    #     YahooFinanceSentiment()
+    # ]
+
     sentiment_classes = [
-        """
-        TwitterSentiment(
-            TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
-        ),
-        RedditSentiment(
-            REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USER_AGENT
-        ),
-        """	
         MotleyFoolSentiment(),
-        MsnMoneySentiment()
+        MsnMoneySentiment(),
+        YahooFinanceSentiment()
     ]
 
     # Define the queries
