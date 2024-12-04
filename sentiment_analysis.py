@@ -23,8 +23,8 @@ class SentimentAnalysis:
 class WebScrapingSentiment(SentimentAnalysis):
     def __init__(self):
         super().__init__()
-        self.base_url = None
-        self.search_url_template = None
+        self.search_url_template = 'https://www.bing.com/search?q={query}:site={domain}'
+        self.domain = None
         self.article_link_filter = None
 
     def fetch_article_content(self, url):
@@ -35,8 +35,8 @@ class WebScrapingSentiment(SentimentAnalysis):
         return article_text
 
     def fetch_data(self, query, count=10):
-        if not all([self.base_url, self.search_url_template, self.article_link_filter]):
-            raise NotImplementedError("Child class must set base_url, search_url_template, and article_link_filter")
+        if not all([self.domain, self.article_link_filter]):
+            raise NotImplementedError("Child class must set domain and article_link_filter")
 
         search_url = self.search_url_template.format(query=query)
         print("fetching data from", search_url)
@@ -56,28 +56,25 @@ class WebScrapingSentiment(SentimentAnalysis):
     def get_full_article_url(self, href):
         if href.startswith('http'):
             return href
-        return self.base_url + href
+        return self.domain + href
 
 class MotleyFoolSentiment(WebScrapingSentiment):
     def __init__(self):
         super().__init__()
-        self.base_url = 'https://www.fool.com'
-        self.search_url_template = '{base_url}/search/?q={query}'.format(base_url=self.base_url, query='{query}')
-        self.article_link_filter = lambda href: '/investing/' in href
+        self.domain = 'fool.com'
+        self.article_link_filter = lambda href: 'fool.com/investing' in href.lower()
 
 class MsnMoneySentiment(WebScrapingSentiment):
     def __init__(self):
         super().__init__()
-        self.base_url = 'https://www.msn.com'
-        self.search_url_template = 'https://www.msn.com/en-us/search?q={query}+site:money.msn.com'
-        self.article_link_filter = lambda href: 'money.msn.com' in href
+        self.domain = 'money.msn.com'
+        self.article_link_filter = lambda href: 'money.msn.com' in href.lower()
 
 class YahooFinanceSentiment(WebScrapingSentiment):
     def __init__(self):
         super().__init__()
-        self.base_url = 'https://finance.yahoo.com'
-        self.search_url_template = '{base_url}/quote/{query}/news?p={query}'.format(base_url=self.base_url, query='{query}')
-        self.article_link_filter = lambda href: href.startswith('/news/')
+        self.domain = 'finance.yahoo.com'
+        self.article_link_filter = lambda href: 'finance.yahoo.com' in href.lower()
 
 class TwitterSentiment(SentimentAnalysis):
     def __init__(self, api_key, api_secret, access_token, access_token_secret):
