@@ -25,7 +25,38 @@ class WebScrapingSentiment(SentimentAnalysis):
         super().__init__()
         self.search_url_template = 'https://www.bing.com/search?q={query}:site={domain}'
         self.domain = None
-        self.article_link_filter = None
+
+    def article_link_filter(self, query, link_text):
+        # Use the LLM to check if the link text is relevant to the stock query
+        prompt = f"Is this headline relevant to {query} stock: {link_text}"
+        try:
+            analysis = self.sentiment_model(prompt)
+            return analysis[0]['label'] == 'POSITIVE'
+        except Exception as e:
+            print(f"Error analyzing link relevance: {e}")
+            # Fall back to basic keyword matching if LLM fails
+            relevant_terms = ['stock', 'market', 'invest', query.lower()]
+            return any(term in link_text.lower() for term in relevant_terms)
+
+    def fetch_data(self, query, count=10):
+        if not self.domain:
+            raise NotImplementedError("Child class must set domain")
+        
+        search_url = self.search_url_template.format(query=query, domain=self.domain)
+        print("fetching data from", search_url)
+        response = requests.get(search_url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        articles = []
+        for result in soup.find_all('li', class_='b_algo'):
+            link = result.find('a', href=True)
+            link_text = link.get_text() if link else ""
+            if link and self.article_link_filter(query, link_text):
+                article_text = self.fetch_article_content(link['href'])
+                articles.append(article_text)
+                if len(articles) >= count:
+                    break
+        return articles
 
     def fetch_article_content(self, url):
         response = requests.get(url)
@@ -34,47 +65,20 @@ class WebScrapingSentiment(SentimentAnalysis):
         article_text = ' '.join([para.get_text() for para in paragraphs])
         return article_text
 
-    def fetch_data(self, query, count=10):
-        if not all([self.domain, self.article_link_filter]):
-            raise NotImplementedError("Child class must set domain and article_link_filter")
-
-        search_url = self.search_url_template.format(query=query)
-        print("fetching data from", search_url)
-        response = requests.get(search_url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        articles = []
-        for link in soup.find_all('a', href=True):
-            if self.article_link_filter(link['href']):
-                article_url = self.get_full_article_url(link['href'])
-                article_text = self.fetch_article_content(article_url)
-                articles.append(article_text)
-                if len(articles) >= count:
-                    break
-        return articles
-
-    def get_full_article_url(self, href):
-        if href.startswith('http'):
-            return href
-        return self.domain + href
-
 class MotleyFoolSentiment(WebScrapingSentiment):
     def __init__(self):
         super().__init__()
         self.domain = 'fool.com'
-        self.article_link_filter = lambda href: 'fool.com/investing' in href.lower()
 
 class MsnMoneySentiment(WebScrapingSentiment):
     def __init__(self):
         super().__init__()
         self.domain = 'money.msn.com'
-        self.article_link_filter = lambda href: 'money.msn.com' in href.lower()
 
 class YahooFinanceSentiment(WebScrapingSentiment):
     def __init__(self):
         super().__init__()
         self.domain = 'finance.yahoo.com'
-        self.article_link_filter = lambda href: 'finance.yahoo.com' in href.lower()
 
 class TwitterSentiment(SentimentAnalysis):
     def __init__(self, api_key, api_secret, access_token, access_token_secret):
