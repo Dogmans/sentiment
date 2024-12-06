@@ -80,19 +80,24 @@ class SentimentAnalysis:
             return 0
 
     def is_relevant(self, text, stock_data):
-        """Check if the text is relevant to the stock using LLM"""
+        """
+        Check if the text is relevant to the stock using pattern matching first,
+        then falling back to LLM-based relevance check if needed.
+        """
         try:
-            # Create a prompt that includes both symbol and company name
-            prompt = f"Is this text about {stock_data.company_name} ({stock_data.symbol})?"
-            
             # First try exact match for efficiency
             pattern = f"\\b({re.escape(stock_data.symbol)}|{re.escape(stock_data.company_name)})\\b"
             if re.search(pattern, text, re.IGNORECASE):
                 return True
-                
-            # If no exact match, use more sophisticated relevance checking
-            # This could be expanded with more sophisticated methods
-            return False
+            
+            # If no exact match, use LLM for more sophisticated relevance checking
+            # Create a prompt that includes both symbol and company name
+            # Truncate text if too long to avoid token limit issues
+            truncated_text = text[:1000] + "..." if len(text) > 1000 else text
+            prompt = f"Is this text about {stock_data.company_name} ({stock_data.symbol})? Text: {truncated_text}"
+            
+            result = self.sentiment_pipeline(prompt)[0]
+            return result['label'] == 'POSITIVE'
             
         except Exception as e:
             print(f"Error checking relevance: {str(e)}")
