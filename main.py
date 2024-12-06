@@ -54,7 +54,11 @@ def main():
     sentiment_classes = [
         WebScrapingSentiment('fool.com'),
         WebScrapingSentiment('money.msn.com'),
-        WebScrapingSentiment('finance.yahoo.com')
+        WebScrapingSentiment('finance.yahoo.com'),
+        RSSFeedSentiment('https://finance.yahoo.com/news/rssindex'),
+        RSSFeedSentiment('http://feeds.marketwatch.com/marketwatch/topstories/'),
+        RSSFeedSentiment('https://www.reutersagency.com/feed/?best-topics=business-finance&post_type=best'),
+        RSSFeedSentiment('https://www.msn.com/en-us/money/rss')
     ]
 
     # Get stock data

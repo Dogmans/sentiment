@@ -1,4 +1,4 @@
-# sentiment_analysis.py
+# web_sentiment.py
 import requests
 from bs4 import BeautifulSoup
 from sentiment_analysis import SentimentAnalysis
@@ -9,20 +9,8 @@ class WebScrapingSentiment(SentimentAnalysis):
         self.search_url_template = 'https://www.bing.com/search?q={query}:site={domain}&freshness=Day'
         self.domain = domain
 
-    def article_link_filter(self, query, link_text):
-        # Use the LLM to check if the link text is relevant to the stock query
-        prompt = f"Is this headline relevant to {query} stock: {link_text}"
-        try:
-            analysis = self.sentiment_model(prompt)
-            return analysis[0]['label'] == 'POSITIVE'
-        except Exception as e:
-            print(f"Error analyzing link relevance: {e}")
-            # Fall back to basic keyword matching if LLM fails
-            relevant_terms = ['stock', 'market', 'invest', query.lower()]
-        return any(term in link_text.lower() for term in relevant_terms)
-
-    def fetch_data(self, query, count=10):
-        search_url = self.search_url_template.format(query=query, domain=self.domain)
+    def fetch_data(self, stock_data, count=10):
+        search_url = self.search_url_template.format(query=stock_data.symbol, domain=self.domain)
         print("fetching data from", search_url)
         response = requests.get(search_url)
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -36,7 +24,7 @@ class WebScrapingSentiment(SentimentAnalysis):
             # Filter for actual article links and relevant content
             if (href.startswith('http') and 
                 self.domain in href and 
-                self.article_link_filter(query, link_text)):
+                self.is_relevant(link_text, stock_data)):
                 
                 try:
                     article_response = requests.get(href)

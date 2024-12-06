@@ -1,19 +1,26 @@
-from transformers import pipeline
 import feedparser
-from datetime import datetime, timedelta
-import re
+from datetime import datetime
 from sentiment_analysis import SentimentAnalysis
 
 class RSSFeedSentiment(SentimentAnalysis):
     def __init__(self, feed_url):
         super().__init__()
         self.feed_url = feed_url
+        self._cached_feed = None
+        self._cached_entries = None
 
-    def is_relevant_to_stock(self, title, description, symbol):
-        """Check if the article is relevant to the stock symbol"""
-        search_pattern = re.compile(f'\\b{symbol}\\b', re.IGNORECASE)
-        return (search_pattern.search(title) is not None or 
-                search_pattern.search(description) is not None)
+    def _get_feed_entries(self):
+        """Get feed entries from cache or fetch if not cached"""
+        if self._cached_entries is None:
+            print(f"Fetching RSS feed from {self.feed_url}")
+            self._cached_feed = feedparser.parse(self.feed_url)
+            self._cached_entries = self._cached_feed.entries
+        return self._cached_entries
+
+    def is_relevant_to_stock(self, title, description, stock_data):
+        """Check if the article is relevant to the stock using LLM"""
+        article_text = f"{title}. {description}"
+        return self.is_relevant(article_text, stock_data)
 
     def is_published_today(self, published_time):
         """Check if the article was published today"""
@@ -27,11 +34,11 @@ class RSSFeedSentiment(SentimentAnalysis):
         except (TypeError, ValueError):
             return False
 
-    def fetch_data(self, symbol, count=100):
-        feed = feedparser.parse(self.feed_url)
+    def fetch_data(self, stock_data, count=100):
+        entries = self._get_feed_entries()
         relevant_texts = []
 
-        for entry in feed.entries:
+        for entry in entries:
             # Check if entry was published today
             if not self.is_published_today(entry.get('published_parsed')):
                 continue
@@ -39,8 +46,8 @@ class RSSFeedSentiment(SentimentAnalysis):
             title = entry.get('title', '')
             description = entry.get('description', '')
             
-            # Check if article is relevant to the stock
-            if self.is_relevant_to_stock(title, description, symbol):
+            # Check if article is relevant to the stock using LLM
+            if self.is_relevant_to_stock(title, description, stock_data):
                 # Combine title and description for sentiment analysis
                 full_text = f"{title}. {description}"
                 relevant_texts.append(full_text)
