@@ -1,7 +1,6 @@
 # main.py
 import os
 import csv
-import time
 from datetime import datetime
 from dataclasses import asdict
 from sentiment_analysis import TwitterSentiment, RedditSentiment, WebScrapingSentiment
@@ -18,9 +17,8 @@ REDDIT_CLIENT_ID = os.getenv('REDDIT_CLIENT_ID')
 REDDIT_CLIENT_SECRET = os.getenv('REDDIT_CLIENT_SECRET')
 REDDIT_USER_AGENT = os.getenv('REDDIT_USER_AGENT')
 
-def process_stocks_with_rate_limit(stocks, sentiment_classes, requests_per_second=10):
-    """Process stocks with rate limiting to avoid overwhelming the servers"""
-    delay = 1.0 / requests_per_second  # Calculate delay between requests
+def process_stocks(stocks, sentiment_classes):
+    """Process stocks and analyze sentiment"""
     total_stocks = len(stocks)
     processed = 0
 
@@ -29,13 +27,10 @@ def process_stocks_with_rate_limit(stocks, sentiment_classes, requests_per_secon
         print(f"Processing {symbol} ({processed}/{total_stocks})")
         
         for sentiment_class in sentiment_classes:
-            results = sentiment_class.fetch_and_analyze(symbol)
+            results = sentiment_class.fetch_and_analyze(stock_data)
             for text, sentiment in results:
                 stock_data.total_sentiment += sentiment
                 stock_data.sentiment_count += 1
-        
-        # Apply rate limiting
-        time.sleep(delay)
 
 def main():
     # List of sentiment analysis classes
@@ -64,8 +59,8 @@ def main():
     # Get stock data
     stocks = get_sp500_stocks()
 
-    # Process stocks with rate limiting
-    process_stocks_with_rate_limit(stocks, sentiment_classes, requests_per_second=10)
+    # Process stocks
+    process_stocks(stocks, sentiment_classes)
 
     # Write results to CSV
     current_date = datetime.now().date().isoformat()
