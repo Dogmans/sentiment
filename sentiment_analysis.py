@@ -21,10 +21,10 @@ class SentimentAnalysis:
         raise NotImplementedError("Subclasses should implement this method")
 
 class WebScrapingSentiment(SentimentAnalysis):
-    def __init__(self):
+    def __init__(self, domain):
         super().__init__()
-        self.search_url_template = 'https://www.bing.com/search?q={query}:site={domain}'
-        self.domain = None
+        self.search_url_template = 'https://www.bing.com/search?q={query}:site={domain}&freshness=Day'
+        self.domain = domain
 
     def article_link_filter(self, query, link_text):
         # Use the LLM to check if the link text is relevant to the stock query
@@ -39,9 +39,6 @@ class WebScrapingSentiment(SentimentAnalysis):
             return any(term in link_text.lower() for term in relevant_terms)
 
     def fetch_data(self, query, count=10):
-        if not self.domain:
-            raise NotImplementedError("Child class must set domain")
-        
         search_url = self.search_url_template.format(query=query, domain=self.domain)
         print("fetching data from", search_url)
         response = requests.get(search_url)
@@ -64,21 +61,6 @@ class WebScrapingSentiment(SentimentAnalysis):
         paragraphs = soup.find_all('p')
         article_text = ' '.join([para.get_text() for para in paragraphs])
         return article_text
-
-class MotleyFoolSentiment(WebScrapingSentiment):
-    def __init__(self):
-        super().__init__()
-        self.domain = 'fool.com'
-
-class MsnMoneySentiment(WebScrapingSentiment):
-    def __init__(self):
-        super().__init__()
-        self.domain = 'money.msn.com'
-
-class YahooFinanceSentiment(WebScrapingSentiment):
-    def __init__(self):
-        super().__init__()
-        self.domain = 'finance.yahoo.com'
 
 class TwitterSentiment(SentimentAnalysis):
     def __init__(self, api_key, api_secret, access_token, access_token_secret):
