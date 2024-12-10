@@ -3,7 +3,10 @@ import os
 import csv
 from datetime import datetime
 from dataclasses import asdict
-from sentiment_analysis import TwitterSentiment, RedditSentiment, WebScrapingSentiment, RSSFeedSentiment
+from twitter_sentiment import TwitterSentiment
+from reddit_sentiment import RedditSentiment
+from web_sentiment import WebScrapingSentiment
+from rss_sentiment import RSSFeedSentiment
 from stocks import get_sp500_stocks
 
 def process_stocks(stocks, sentiment_classes):

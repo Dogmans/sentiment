@@ -3,6 +3,7 @@ import re
 import nltk
 from nltk.tokenize import sent_tokenize
 nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
 
 class SentimentAnalysis:
     def __init__(self):
