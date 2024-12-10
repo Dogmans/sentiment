@@ -40,7 +40,7 @@ class RSSFeedSentiment(SentimentAnalysis):
     def fetch_data(self, stock_data, count=100):
         entries = self._get_feed_entries()
         relevant_texts = []
-        print(f"\nProcessing RSS feed articles for {stock_data.symbol}:")
+        print(f"\nProcessing RSS feed articles for {stock_data.symbol} from {self.feed_url}:")
 
         for entry in entries:
             # Check if entry was published today
