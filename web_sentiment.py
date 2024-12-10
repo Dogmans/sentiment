@@ -12,7 +12,7 @@ class WebScrapingSentiment(SentimentAnalysis):
 
     def fetch_data(self, stock_data, count=10):
         search_url = self.search_url_template.format(query=stock_data.symbol, domain=self.domain)
-        print("fetching data from", search_url)
+        print(f"\nProcessing web articles for {stock_data.symbol} from {self.domain}:")
         response = self._rate_limited_request(search_url)
         soup = BeautifulSoup(response.content, 'html.parser')
         
@@ -36,6 +36,7 @@ class WebScrapingSentiment(SentimentAnalysis):
                     article_text = ' '.join([p.get_text() for p in paragraphs])
                     
                     if article_text:  # Only add if we got some text
+                        print(f"  - {link_text}")
                         articles.append(article_text)
                         if len(articles) >= count:
                             break
@@ -43,4 +44,7 @@ class WebScrapingSentiment(SentimentAnalysis):
                     print(f"Error fetching article from {href}: {str(e)}")
                     continue  # Skip any articles we can't fetch
         
+        if not articles:
+            print("  No relevant articles found")
+        print(f"  Total articles found: {len(articles)}")
         return articles

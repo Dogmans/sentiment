@@ -40,6 +40,7 @@ class RSSFeedSentiment(SentimentAnalysis):
     def fetch_data(self, stock_data, count=100):
         entries = self._get_feed_entries()
         relevant_texts = []
+        print(f"\nProcessing RSS feed articles for {stock_data.symbol}:")
 
         for entry in entries:
             # Check if entry was published today
@@ -62,6 +63,7 @@ class RSSFeedSentiment(SentimentAnalysis):
                     article_text = ' '.join([p.get_text() for p in paragraphs])
                     
                     if article_text:  # Only add if we got some text
+                        print(f"  - {title}")
                         relevant_texts.append(article_text)
                         if len(relevant_texts) >= count:
                             break
@@ -69,8 +71,12 @@ class RSSFeedSentiment(SentimentAnalysis):
                     print(f"Error fetching article from {link}: {str(e)}")
                     # If we can't fetch the full article, fall back to title + description
                     full_text = f"{title}. {description}"
+                    print(f"  - {title} (using title/description only)")
                     relevant_texts.append(full_text)
                     if len(relevant_texts) >= count:
                         break
 
+        if not relevant_texts:
+            print("  No relevant articles found")
+        print(f"  Total articles found: {len(relevant_texts)}")
         return relevant_texts
