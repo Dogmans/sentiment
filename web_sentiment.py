@@ -6,26 +6,9 @@ import time
 
 class WebScrapingSentiment(SentimentAnalysis):
     def __init__(self, domain, requests_per_second=10):
-        super().__init__()
+        super().__init__(requests_per_second)
         self.search_url_template = 'https://www.bing.com/search?q={query}:site={domain}&freshness=Day'
         self.domain = domain
-        self.delay = 1.0 / requests_per_second if requests_per_second > 0 else 0
-        self.last_request_time = 0
-
-    def _rate_limited_request(self, url):
-        """Make a rate-limited request"""
-        # Calculate time since last request
-        now = time.time()
-        time_since_last = now - self.last_request_time
-        
-        # If we need to wait to maintain rate limit, do so
-        if time_since_last < self.delay:
-            time.sleep(self.delay - time_since_last)
-        
-        # Make the request and update last request time
-        response = requests.get(url)
-        self.last_request_time = time.time()
-        return response
 
     def fetch_data(self, stock_data, count=10):
         search_url = self.search_url_template.format(query=stock_data.symbol, domain=self.domain)
@@ -56,7 +39,8 @@ class WebScrapingSentiment(SentimentAnalysis):
                         articles.append(article_text)
                         if len(articles) >= count:
                             break
-                except:
+                except Exception as e:
+                    print(f"Error fetching article from {href}: {str(e)}")
                     continue  # Skip any articles we can't fetch
         
         return articles

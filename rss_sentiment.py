@@ -1,10 +1,13 @@
 import feedparser
+import requests
+from bs4 import BeautifulSoup
+import time
 from datetime import datetime
 from sentiment_analysis import SentimentAnalysis
 
 class RSSFeedSentiment(SentimentAnalysis):
-    def __init__(self, feed_url):
-        super().__init__()
+    def __init__(self, feed_url, requests_per_second=10):
+        super().__init__(requests_per_second)
         self.feed_url = feed_url
         self._cached_feed = None
         self._cached_entries = None
@@ -45,14 +48,29 @@ class RSSFeedSentiment(SentimentAnalysis):
 
             title = entry.get('title', '')
             description = entry.get('description', '')
+            link = entry.get('link', '')
             
             # Check if article is relevant to the stock using LLM
             if self.is_relevant_to_stock(title, description, stock_data):
-                # Combine title and description for sentiment analysis
-                full_text = f"{title}. {description}"
-                relevant_texts.append(full_text)
-
-            if len(relevant_texts) >= count:
-                break
+                try:
+                    # Fetch and parse the full article using cached request
+                    article_response = self._rate_limited_request(link)
+                    article_soup = BeautifulSoup(article_response.content, 'html.parser')
+                    
+                    # Extract article text from paragraphs
+                    paragraphs = article_soup.find_all('p')
+                    article_text = ' '.join([p.get_text() for p in paragraphs])
+                    
+                    if article_text:  # Only add if we got some text
+                        relevant_texts.append(article_text)
+                        if len(relevant_texts) >= count:
+                            break
+                except Exception as e:
+                    print(f"Error fetching article from {link}: {str(e)}")
+                    # If we can't fetch the full article, fall back to title + description
+                    full_text = f"{title}. {description}"
+                    relevant_texts.append(full_text)
+                    if len(relevant_texts) >= count:
+                        break
 
         return relevant_texts

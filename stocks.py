@@ -18,6 +18,7 @@ class StockData:
     def average_sentiment(self) -> float:
         return round(self.total_sentiment / self.sentiment_count, 3) if self.sentiment_count > 0 else 0
 
+# TODO - add sector and region
 def get_sp500_stocks() -> Dict[str, StockData]:
     url = "https://stockanalysis.com/list/sp-500-stocks/"
     response = requests.get(url)

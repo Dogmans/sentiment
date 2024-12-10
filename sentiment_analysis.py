@@ -1,15 +1,42 @@
 from transformers import pipeline
 import re
 import nltk
+import time
+import requests
 from nltk.tokenize import sent_tokenize
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
 
 class SentimentAnalysis:
-    def __init__(self):
+    def __init__(self, requests_per_second=10):
         self.sentiment_pipeline = pipeline("sentiment-analysis")
         self.max_length = 512  # Maximum token length for the model
+        self.delay = 1.0 / requests_per_second if requests_per_second > 0 else 0
+        self.last_request_time = 0
+        self._url_cache = {}  # Cache for URL responses
+
+    def _rate_limited_request(self, url):
+        """Make a rate-limited request with caching"""
+        # Check cache first
+        if url in self._url_cache:
+            return self._url_cache[url]
+
+        # Calculate time since last request
+        now = time.time()
+        time_since_last = now - self.last_request_time
         
+        # If we need to wait to maintain rate limit, do so
+        if time_since_last < self.delay:
+            time.sleep(self.delay - time_since_last)
+        
+        # Make the request and update last request time
+        response = requests.get(url)
+        self.last_request_time = time.time()
+        
+        # Cache the response
+        self._url_cache[url] = response
+        return response
+
     def chunk_text(self, text):
         """
         Intelligently chunk text into segments that respect sentence boundaries
