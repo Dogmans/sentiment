@@ -3,13 +3,20 @@ import re
 import nltk
 import time
 import requests
+import torch
 from nltk.tokenize import sent_tokenize
+from typing import List
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
 
 class SentimentAnalysis:
     def __init__(self, requests_per_second=10):
         self.sentiment_pipeline = pipeline("sentiment-analysis")
+        self.relevance_pipeline = pipeline(
+            "zero-shot-classification",
+            model="facebook/bart-large-mnli",  # One of the best zero-shot classifiers
+            device=0 if torch.cuda.is_available() else -1
+        )
         self.max_length = 512  # Maximum token length for the model
         self.delay = 1.0 / requests_per_second if requests_per_second > 0 else 0
         self.last_request_time = 0
@@ -107,25 +114,50 @@ class SentimentAnalysis:
             print(f"Error analyzing text: {str(e)}")
             return 0
 
+    def _preprocess_text(self, text: str) -> str:
+        """Clean and preprocess the input text for relevance checking."""
+        text = re.sub(r'[^\w\s]', ' ', text)
+        text = ' '.join(text.split())
+        return text.lower()
+
+    def _extract_company_keywords(self, stock_data) -> List[str]:
+        """Extract relevant keywords from company data."""
+        keywords = [stock_data.symbol.lower()]
+        name_words = stock_data.company_name.lower().split()
+        common_words = {'inc', 'corp', 'corporation', 'ltd', 'limited', 'llc', 'company', 'co', 'the'}
+        keywords.extend([word for word in name_words if word not in common_words])
+        return keywords
+
     def is_relevant(self, text, stock_data):
         """
-        Check if the text is relevant to the stock using pattern matching first,
-        then falling back to LLM-based relevance check if needed.
+        Check if the text is relevant to the stock using zero-shot classification.
+        This approach is more flexible and can better understand complex relationships.
         """
         try:
-            # First try exact match for efficiency
-            pattern = f"\\b({re.escape(stock_data.symbol)}|{re.escape(stock_data.company_name)})\\b"
-            if re.search(pattern, text, re.IGNORECASE):
-                return True
+            # First do a quick keyword check for efficiency
+            text = self._preprocess_text(text)
+            keywords = self._extract_company_keywords(stock_data)
             
-            # If no exact match, use LLM for more sophisticated relevance checking
-            # Create a prompt that includes both symbol and company name
-            # Truncate text if too long to avoid token limit issues
-            truncated_text = text[:1000] + "..." if len(text) > 1000 else text
-            prompt = f"Is this text about {stock_data.company_name} ({stock_data.symbol})? Text: {truncated_text}"
+            if not any(keyword in text for keyword in keywords):
+                return False
+
+            # Prepare text and candidate labels for zero-shot classification
+            hypothesis_template = "This text is about {}."
+            labels = [
+                f"{stock_data.company_name} ({stock_data.symbol})",
+                "unrelated company or topic"
+            ]
             
-            result = self.sentiment_pipeline(prompt)[0]
-            return result['label'] == 'POSITIVE'
+            # Use zero-shot classification to determine relevance
+            result = self.relevance_pipeline(
+                text[:1024],  # Truncate to reasonable length while keeping context
+                labels,
+                hypothesis_template=hypothesis_template,
+                multi_label=False
+            )
+            
+            # Return True if the model is more confident about the company label
+            return result['labels'][0] == labels[0] and result['scores'][0] > 0.5
             
         except Exception as e:
             print(f"Error checking relevance: {str(e)}")

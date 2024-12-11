@@ -52,6 +52,7 @@ class RSSFeedSentiment(SentimentAnalysis):
             link = entry.get('link', '')
             
             # Check if article is relevant to the stock using LLM
+            # TODO - need to check contents for relevance - title is returning true for some reason too!
             if self.is_relevant_to_stock(title, description, stock_data):
                 try:
                     # Fetch and parse the full article using cached request
