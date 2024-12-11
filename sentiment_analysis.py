@@ -6,8 +6,22 @@ import requests
 import torch
 from nltk.tokenize import sent_tokenize
 from typing import List
+from dataclasses import dataclass
+from typing import List, Dict, Tuple
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
+
+@dataclass
+class Article:
+    """Represents an article with its relevant chunks of text"""
+    title: str
+    chunks: List[str]
+    @property
+    def sentiment_score(self):
+        if not self.chunks:
+            return 0
+        chunk_sentiments = [self.analyze_text(chunk) for chunk in self.chunks]
+        return sum(chunk_sentiments) / len(chunk_sentiments)
 
 class SentimentAnalysis:
     def __init__(self, requests_per_second=10):
@@ -74,41 +88,17 @@ class SentimentAnalysis:
         return chunks
 
     def analyze_text(self, text):
-        """
-        Analyze sentiment of text, handling long texts by chunking and averaging.
-        Returns a sentiment score between -1 and 1.
-        """
-        if not text or len(text.strip()) == 0:
+        """Analyze the sentiment of a text chunk using LLM."""
+        if not text:
             return 0
             
         try:
             # Clean the text
             text = re.sub(r'\s+', ' ', text).strip()
             
-            # Split into manageable chunks
-            chunks = self.chunk_text(text)
-            
-            if not chunks:
-                return 0
-                
-            # Analyze each chunk
-            chunk_sentiments = []
-            for chunk in chunks:
-                result = self.sentiment_pipeline(chunk)[0]
-                # Convert POSITIVE/NEGATIVE to numeric score
-                score = result['score']
-                if result['label'] == 'NEGATIVE':
-                    score = -score
-                chunk_sentiments.append(score)
-            
-            # Weight chunks by their length for final sentiment
-            total_length = sum(len(chunk.split()) for chunk in chunks)
-            weighted_sentiment = sum(
-                sentiment * len(chunk.split()) / total_length
-                for chunk, sentiment in zip(chunks, chunk_sentiments)
-            )
-            
-            return weighted_sentiment
+            # Get sentiment
+            result = self.sentiment_pipeline(text)[0]
+            return 1 if result['label'] == 'POSITIVE' else -1
             
         except Exception as e:
             print(f"Error analyzing text: {str(e)}")
@@ -194,21 +184,6 @@ class SentimentAnalysis:
         except Exception as e:
             print(f"Error checking relevance: {str(e)}")
             return []
-
-    def fetch_and_analyze(self, stock_data):
-        """
-        Fetch and analyze sentiment data for a stock.
-        Returns list of (text, sentiment_score) tuples.
-        """
-        texts = self.fetch_data(stock_data)
-        results = []
-        
-        for text in texts:
-            if self.extract_relevant_chunks(text, stock_data):
-                sentiment = self.analyze_text(text)
-                results.append((text, sentiment))
-                
-        return results
 
     def fetch_data(self, stock_data):
         """

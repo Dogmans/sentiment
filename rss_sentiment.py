@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import time
 from datetime import datetime
-from sentiment_analysis import SentimentAnalysis
+from sentiment_analysis import Article, SentimentAnalysis
 
 class RSSFeedSentiment(SentimentAnalysis):
     def __init__(self, feed_url, requests_per_second=10):
@@ -34,7 +34,7 @@ class RSSFeedSentiment(SentimentAnalysis):
 
     def fetch_data(self, stock_data):
         entries = self._get_feed_entries()
-        relevant_texts = []
+        articles = []
         print(f"\nProcessing RSS feed articles for {stock_data.symbol} from {self.feed_url}:")
 
         for entry in entries:
@@ -47,9 +47,9 @@ class RSSFeedSentiment(SentimentAnalysis):
             relevant_chunks = self.get_link_relevant_chunks(link, stock_data)
             if relevant_chunks:
                 print(f"  - {title}")
-                relevant_texts.extend(relevant_chunks)
+                articles.append(Article(title=title, chunks=relevant_chunks))
 
-        if not relevant_texts:
+        if not articles:
             print("  No relevant articles found")
-        print(f"  Total relevant chunks found: {len(relevant_texts)}")
-        return relevant_texts
+        print(f"  Total articles found: {len(articles)}")
+        return articles

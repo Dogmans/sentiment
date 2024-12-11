@@ -11,12 +11,21 @@ class StockData:
     price: str
     change: str
     revenue: str
-    total_sentiment: float = 0
-    sentiment_count: int = 0
+    articles : list = []
+
+    @property
+    def total_sentiment(self) -> float:
+        return sum(article.sentiment_score for article in self.articles)
 
     @property
     def average_sentiment(self) -> float:
-        return round(self.total_sentiment / self.sentiment_count, 3) if self.sentiment_count > 0 else 0
+        if self.sentiment_count == 0:
+            return 0
+        return round(self.total_sentiment / self.sentiment_count, 3)
+
+    @property
+    def sentiment_count(self) -> int:
+        return len(self.articles)
 
 # TODO - add sector and region
 def get_sp500_stocks() -> Dict[str, StockData]:

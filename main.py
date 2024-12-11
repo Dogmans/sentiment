@@ -19,10 +19,7 @@ def process_stocks(stocks, sentiment_classes):
         print(f"Processing {symbol} ({processed}/{total_stocks})")
         
         for sentiment_class in sentiment_classes:
-            results = sentiment_class.fetch_and_analyze(stock_data)
-            for text, sentiment in results:
-                stock_data.total_sentiment += sentiment
-                stock_data.sentiment_count += 1
+            stock_data.articles = sentiment_class.fetch_data(stock_data)
 
 def main():
     sentiment_classes = [
