@@ -8,8 +8,9 @@ from reddit_sentiment import RedditSentiment
 from web_sentiment import WebScrapingSentiment
 from rss_sentiment import RSSFeedSentiment
 from stocks import get_sp500_stocks
+from typing import Dict, List
 
-def process_stocks(stocks, sentiment_classes):
+def process_stocks(stocks: Dict[str, StockData], sentiment_classes: List[SentimentAnalysis]):
     """Process stocks and analyze sentiment"""
     total_stocks = len(stocks)
     processed = 0
@@ -18,8 +19,16 @@ def process_stocks(stocks, sentiment_classes):
         processed += 1
         print(f"Processing {symbol} ({processed}/{total_stocks})")
         
+        # Keep track of processed URLs to avoid duplicates
+        seen_urls = {article.url for article in stock_data.articles}
+        
         for sentiment_class in sentiment_classes:
-            stock_data.articles = sentiment_class.fetch_data(stock_data)
+            new_articles = sentiment_class.fetch_data(stock_data)
+            # Only add articles with unique URLs
+            for article in new_articles:
+                if article.url not in seen_urls:
+                    stock_data.articles.append(article)
+                    seen_urls.add(article.url)
 
 def main():
     sentiment_classes = [
@@ -30,6 +39,7 @@ def main():
     ]
 
     # Get stock data
+    # TODO - add sector etc.
     stocks = get_sp500_stocks()
 
     # Process stocks

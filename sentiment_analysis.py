@@ -15,6 +15,7 @@ nltk.download('punkt_tab', quiet=True)
 class Article:
     """Represents an article with its relevant chunks of text"""
     title: str
+    url: str
     chunks: List[str]
     @property
     def sentiment_score(self):
@@ -188,6 +189,6 @@ class SentimentAnalysis:
     def fetch_data(self, stock_data):
         """
         Abstract method to be implemented by subclasses.
-        Should return a list of texts to analyze.
+        Should return a list of relevant articles.
         """
         raise NotImplementedError("Subclasses must implement fetch_data")

@@ -44,10 +44,13 @@ class RSSFeedSentiment(SentimentAnalysis):
 
             title = entry.get('title', '')
             link = entry.get('link', '')
+            # Remove URL arguments
+            base_url = link.split('?')[0]
+            
             relevant_chunks = self.get_link_relevant_chunks(link, stock_data)
             if relevant_chunks:
                 print(f"  - {title}")
-                articles.append(Article(title=title, chunks=relevant_chunks))
+                articles.append(Article(title=title, url=base_url, chunks=relevant_chunks))
 
         if not articles:
             print("  No relevant articles found")
