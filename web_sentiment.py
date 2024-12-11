@@ -17,34 +17,19 @@ class WebScrapingSentiment(SentimentAnalysis):
         soup = BeautifulSoup(response.content, 'html.parser')
         
         # Find all search result links
-        articles = []
+        relevant_texts = []
         for link in soup.find_all('a'):
             href = link.get('href', '')
             link_text = link.get_text()
             
             # Filter for actual article links and relevant content
-            if (href.startswith('http') and 
-                self.domain in href and 
-                self.is_relevant(link_text, stock_data)):
-                
-                try:
-                    article_response = self._rate_limited_request(href)
-                    article_soup = BeautifulSoup(article_response.content, 'html.parser')
-                    
-                    # Extract article text from paragraphs
-                    paragraphs = article_soup.find_all('p')
-                    article_text = ' '.join([p.get_text() for p in paragraphs])
-                    
-                    if article_text:  # Only add if we got some text
-                        print(f"  - {link_text}")
-                        articles.append(article_text)
-                        if len(articles) >= count:
-                            break
-                except Exception as e:
-                    print(f"Error fetching article from {href}: {str(e)}")
-                    continue  # Skip any articles we can't fetch
+            if href.startswith('http') and self.domain in href: 
+                relevant_chunks = self.get_link_relevant_chunks(href, stock_data)
+                if relevant_chunks:
+                    print(f"  - {link_text}")
+                    relevant_texts.extend(relevant_chunks)
         
-        if not articles:
+        if not relevant_texts:
             print("  No relevant articles found")
-        print(f"  Total articles found: {len(articles)}")
-        return articles
+        print(f"  Total articles found: {len(relevant_texts)}")
+        return relevant_texts

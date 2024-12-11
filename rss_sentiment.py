@@ -20,11 +20,6 @@ class RSSFeedSentiment(SentimentAnalysis):
             self._cached_entries = self._cached_feed.entries
         return self._cached_entries
 
-    def is_relevant_to_stock(self, title, description, stock_data):
-        """Check if the article is relevant to the stock using LLM"""
-        article_text = f"{title}. {description}"
-        return self.is_relevant(article_text, stock_data)
-
     def is_published_today(self, published_time):
         """Check if the article was published today"""
         if not published_time:
@@ -37,7 +32,7 @@ class RSSFeedSentiment(SentimentAnalysis):
         except (TypeError, ValueError):
             return False
 
-    def fetch_data(self, stock_data, count=100):
+    def fetch_data(self, stock_data):
         entries = self._get_feed_entries()
         relevant_texts = []
         print(f"\nProcessing RSS feed articles for {stock_data.symbol} from {self.feed_url}:")
@@ -48,36 +43,13 @@ class RSSFeedSentiment(SentimentAnalysis):
                 continue
 
             title = entry.get('title', '')
-            description = entry.get('description', '')
             link = entry.get('link', '')
-            
-            # Check if article is relevant to the stock using LLM
-            # TODO - need to check contents for relevance - title is returning true for some reason too!
-            if self.is_relevant_to_stock(title, description, stock_data):
-                try:
-                    # Fetch and parse the full article using cached request
-                    article_response = self._rate_limited_request(link)
-                    article_soup = BeautifulSoup(article_response.content, 'html.parser')
-                    
-                    # Extract article text from paragraphs
-                    paragraphs = article_soup.find_all('p')
-                    article_text = ' '.join([p.get_text() for p in paragraphs])
-                    
-                    if article_text:  # Only add if we got some text
-                        print(f"  - {title}")
-                        relevant_texts.append(article_text)
-                        if len(relevant_texts) >= count:
-                            break
-                except Exception as e:
-                    print(f"Error fetching article from {link}: {str(e)}")
-                    # If we can't fetch the full article, fall back to title + description
-                    full_text = f"{title}. {description}"
-                    print(f"  - {title} (using title/description only)")
-                    relevant_texts.append(full_text)
-                    if len(relevant_texts) >= count:
-                        break
+            relevant_chunks = self.get_link_relevant_chunks(link, stock_data)
+            if relevant_chunks:
+                print(f"  - {title}")
+                relevant_texts.extend(relevant_chunks)
 
         if not relevant_texts:
             print("  No relevant articles found")
-        print(f"  Total articles found: {len(relevant_texts)}")
+        print(f"  Total relevant chunks found: {len(relevant_texts)}")
         return relevant_texts

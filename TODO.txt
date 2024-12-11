@@ -1,0 +1,5 @@
+We need to weight on article count and sentiment not total chunks as this would favour long articles
+Currently it is returning chunks as articles, which is wrong
+Could the chunking miss relevance about the article as a whole?
+I.e. there is a positive chunk that refers to the earlier stock but does not mention it explicitly?
+Bring web_sentiment in line with rss_sentiment - done

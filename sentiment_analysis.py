@@ -128,10 +128,32 @@ class SentimentAnalysis:
         keywords.extend([word for word in name_words if word not in common_words])
         return keywords
 
-    def is_relevant(self, text, stock_data):
+    def get_link_relevant_chunks(self, link, stock_data):
+        """
+        Returns list of relevant text chunks at a given link.
+        """
+        try:
+            # Fetch and parse the full article using cached request
+            article_response = self._rate_limited_request(link)
+            article_soup = BeautifulSoup(article_response.content, 'html.parser')
+            
+            # Extract article text from paragraphs
+            paragraphs = article_soup.find_all('p')
+            article_text = ' '.join([p.get_text() for p in paragraphs])
+            
+            if article_text:
+                return self.extract_relevant_chunks(article_text, stock_data)
+                    
+        except Exception as e:
+            print(f"Error fetching article from {link}: {str(e)}")
+            
+        return []
+
+    def extract_relevant_chunks(self, text, stock_data):
         """
         Check if the text is relevant to the stock using zero-shot classification.
-        This approach is more flexible and can better understand complex relationships.
+        Analyzes text in chunks and returns any relevant chunks.
+        Returns: List of relevant text chunks, empty list if none are relevant.
         """
         try:
             # First do a quick keyword check for efficiency
@@ -139,29 +161,39 @@ class SentimentAnalysis:
             keywords = self._extract_company_keywords(stock_data)
             
             if not any(keyword in text for keyword in keywords):
-                return False
+                return []
 
-            # Prepare text and candidate labels for zero-shot classification
+            # Split into manageable chunks
+            chunks = self.chunk_text(text)
+            if not chunks:
+                return []
+
+            # Prepare labels for zero-shot classification
             hypothesis_template = "This text is about {}."
             labels = [
                 f"{stock_data.company_name} ({stock_data.symbol})",
                 "unrelated company or topic"
             ]
             
-            # Use zero-shot classification to determine relevance
-            result = self.relevance_pipeline(
-                text[:1024],  # Truncate to reasonable length while keeping context
-                labels,
-                hypothesis_template=hypothesis_template,
-                multi_label=False
-            )
+            relevant_chunks = []
+            # Check each chunk for relevance
+            for chunk in chunks:
+                result = self.relevance_pipeline(
+                    chunk,
+                    labels,
+                    hypothesis_template=hypothesis_template,
+                    multi_label=False
+                )
+                
+                # If chunk is confidently relevant, add it to the list
+                if result['labels'][0] == labels[0] and result['scores'][0] > 0.7:
+                    relevant_chunks.append(chunk)
             
-            # Return True if the model is more confident about the company label
-            return result['labels'][0] == labels[0] and result['scores'][0] > 0.5
+            return relevant_chunks
             
         except Exception as e:
             print(f"Error checking relevance: {str(e)}")
-            return False
+            return []
 
     def fetch_and_analyze(self, stock_data):
         """
@@ -172,7 +204,7 @@ class SentimentAnalysis:
         results = []
         
         for text in texts:
-            if self.is_relevant(text, stock_data):
+            if self.extract_relevant_chunks(text, stock_data):
                 sentiment = self.analyze_text(text)
                 results.append((text, sentiment))
                 
