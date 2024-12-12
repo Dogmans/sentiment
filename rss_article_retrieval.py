@@ -4,9 +4,9 @@ from bs4 import BeautifulSoup
 import time
 from datetime import datetime
 from article import Article
-from sentiment_analysis import SentimentAnalysis
+from article_retrieval import ArticleRetrieval
 
-class RSSFeedSentiment(SentimentAnalysis):
+class RSSArticleRetrieval(ArticleRetrieval):
     def __init__(self, feed_url, requests_per_second=10):
         super().__init__(requests_per_second)
         self.feed_url = feed_url
@@ -51,7 +51,7 @@ class RSSFeedSentiment(SentimentAnalysis):
             relevant_chunks = self.get_link_relevant_chunks(link, stock_data)
             if relevant_chunks:
                 print(f"  - {title}")
-                articles.append(Article(title=title, url=base_url, chunks=relevant_chunks, sentiment_analyzer=self))
+                articles.append(Article(title=title, url=base_url, chunks=relevant_chunks))
 
         if not articles:
             print("  No relevant articles found")

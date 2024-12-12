@@ -1,8 +1,8 @@
 import praw
 import os
-from sentiment_analysis import SentimentAnalysis
+from article_retrieval import ArticleRetrieval
 
-class RedditSentiment(SentimentAnalysis):
+class RedditArticleRetrieval(ArticleRetrieval):
     def __init__(self):
         super().__init__()
         # Get credentials from environment variables

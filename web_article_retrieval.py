@@ -2,10 +2,10 @@
 import requests
 from bs4 import BeautifulSoup
 from article import Article
-from sentiment_analysis import SentimentAnalysis
+from article_retrieval import ArticleRetrieval
 import time
 
-class WebScrapingSentiment(SentimentAnalysis):
+class WebArticleRetrieval(ArticleRetrieval):
     def __init__(self, domain, requests_per_second=10):
         super().__init__(requests_per_second)
         self.domain = domain
@@ -31,7 +31,7 @@ class WebScrapingSentiment(SentimentAnalysis):
                 relevant_chunks = self.get_link_relevant_chunks(href, stock_data)
                 if relevant_chunks:
                     print(f"  - {link_text}")
-                    articles.append(Article(title=link_text, url=base_url, chunks=relevant_chunks, sentiment_analyzer=self))
+                    articles.append(Article(title=link_text, url=base_url, chunks=relevant_chunks))
         
         if not articles:
             print("  No relevant articles found")

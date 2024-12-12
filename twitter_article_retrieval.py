@@ -1,8 +1,8 @@
 import tweepy
 import os
-from sentiment_analysis import SentimentAnalysis
+from article_retrieval import ArticleRetrieval
 
-class TwitterSentiment(SentimentAnalysis):
+class TwitterArticleRetrieval(ArticleRetrieval):
     def __init__(self):
         super().__init__()
         # Get credentials from environment variables

@@ -1,7 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
-from dataclasses import dataclass
-from typing import Dict
+from article import Article
+from dataclasses import dataclass, field
+from typing import Dict, List
 
 @dataclass
 class StockData:
@@ -11,7 +12,7 @@ class StockData:
     price: str
     change: str
     revenue: str
-    articles : list = []
+    articles : List[Article] = field(default_factory=list)
 
     @property
     def total_sentiment(self) -> float:
@@ -27,10 +28,10 @@ class StockData:
     def sentiment_count(self) -> int:
         return len(self.articles)
 
-    def fetch_and_append_sentiment(self, sentiment_class) -> None:
+    def fetch_and_append_articles(self, retrieval) -> None:
         """Fetch sentiment data and append unique articles"""
         seen_urls = {article.url for article in self.articles}
-        new_articles = sentiment_class.fetch_data(self)
+        new_articles = retrieval.fetch_data(self)
         for article in new_articles:
             if article.url not in seen_urls:
                 self.articles.append(article)

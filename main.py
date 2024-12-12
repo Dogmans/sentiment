@@ -3,15 +3,15 @@ import os
 import csv
 from datetime import datetime
 from dataclasses import asdict
-from twitter_sentiment import TwitterSentiment
-from reddit_sentiment import RedditSentiment
-from web_sentiment import WebScrapingSentiment
-from rss_sentiment import RSSFeedSentiment
-from sentiment_analysis import SentimentAnalysis
+from twitter_article_retrieval import TwitterArticleRetrieval
+from reddit_article_retrieval import RedditArticleRetrieval
+from web_article_retrieval import WebArticleRetrieval
+from rss_article_retrieval import RSSArticleRetrieval
+from article_retrieval import ArticleRetrieval
 from stocks import get_sp500_stocks, StockData
 from typing import Dict, List, Sequence
 
-def process_stocks(stocks: Dict[str, StockData], sentiment_classes: Sequence[SentimentAnalysis]):
+def process_stocks(stocks: Dict[str, StockData], retrieval_classes: Sequence[ArticleRetrieval]):
     """Process stocks and analyze sentiment"""
     total_stocks = len(stocks)
     processed = 0
@@ -20,15 +20,16 @@ def process_stocks(stocks: Dict[str, StockData], sentiment_classes: Sequence[Sen
         processed += 1
         print(f"Processing {symbol} ({processed}/{total_stocks})")
         
-        for sentiment_class in sentiment_classes:
-            stock_data.fetch_and_append_sentiment(sentiment_class)
+        for retrieval_class in retrieval_classes:
+            stock_data.fetch_and_append_articles(retrieval_class)
 
 def main():
-    sentiment_classes = [
-        RSSFeedSentiment('https://finance.yahoo.com/news/rssindex'),
-        RSSFeedSentiment('http://feeds.marketwatch.com/marketwatch/topstories/'),
-        RSSFeedSentiment('https://www.reutersagency.com/feed/?best-topics=business-finance&post_type=best'),
-        RSSFeedSentiment('https://www.msn.com/en-us/money/rss'),
+    # TODO - add and test other retrieval classes
+    retrieval_classes = [
+        RSSArticleRetrieval('https://finance.yahoo.com/news/rssindex'),
+        RSSArticleRetrieval('http://feeds.marketwatch.com/marketwatch/topstories/'),
+        RSSArticleRetrieval('https://www.reutersagency.com/feed/?best-topics=business-finance&post_type=best'),
+        RSSArticleRetrieval('https://www.msn.com/en-us/money/rss'),
     ]
 
     # Get stock data
@@ -36,7 +37,7 @@ def main():
     stocks = get_sp500_stocks()
 
     # Process stocks
-    process_stocks(stocks, sentiment_classes)
+    process_stocks(stocks, retrieval_classes)
 
     # Write results to CSV
     current_date = datetime.now().date().isoformat()

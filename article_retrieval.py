@@ -13,9 +13,8 @@ from article import Article
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
 
-class SentimentAnalysis:
+class ArticleRetrieval:
     def __init__(self, requests_per_second=10):
-        self.sentiment_pipeline = pipeline("sentiment-analysis")
         self.relevance_pipeline = pipeline(
             "zero-shot-classification",
             model="facebook/bart-large-mnli",  # One of the best zero-shot classifiers
@@ -77,39 +76,11 @@ class SentimentAnalysis:
             
         return chunks
 
-    def analyze_text(self, text):
-        """Analyze the sentiment of a text chunk using LLM."""
-        if not text:
-            return 0
-            
-        try:
-            # Clean the text
-            text = re.sub(r'\s+', ' ', text).strip()
-            
-            # Get sentiment - ensure text is a list for batch processing
-            results = self.sentiment_pipeline([text])
-            if not results:
-                return 0
-            result = results[0]
-            return 1 if result['label'] == 'POSITIVE' else -1
-            
-        except Exception as e:
-            print(f"Error analyzing text: {str(e)}")
-            return 0
-
     def _preprocess_text(self, text: str) -> str:
         """Clean and preprocess the input text for relevance checking."""
         text = re.sub(r'[^\w\s]', ' ', text)
         text = ' '.join(text.split())
         return text.lower()
-
-    def _extract_company_keywords(self, stock_data) -> List[str]:
-        """Extract relevant keywords from company data."""
-        keywords = [stock_data.symbol.lower()]
-        name_words = stock_data.company_name.lower().split()
-        common_words = {'inc', 'corp', 'corporation', 'ltd', 'limited', 'llc', 'company', 'co', 'the'}
-        keywords.extend([word for word in name_words if word not in common_words])
-        return keywords
 
     def get_link_relevant_chunks(self, link, stock_data):
         """
@@ -141,10 +112,6 @@ class SentimentAnalysis:
         try:
             # First do a quick keyword check for efficiency
             text = self._preprocess_text(text)
-            keywords = self._extract_company_keywords(stock_data)
-            
-            if not any(keyword in text for keyword in keywords):
-                return []
 
             # Split into manageable chunks
             chunks = self.chunk_text(text)
