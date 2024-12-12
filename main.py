@@ -20,16 +20,8 @@ def process_stocks(stocks: Dict[str, StockData], sentiment_classes: Sequence[Sen
         processed += 1
         print(f"Processing {symbol} ({processed}/{total_stocks})")
         
-        # Keep track of processed URLs to avoid duplicates
-        seen_urls = {article.url for article in stock_data.articles}
-        
         for sentiment_class in sentiment_classes:
-            new_articles = sentiment_class.fetch_data(stock_data)
-            # Only add articles with unique URLs
-            for article in new_articles:
-                if article.url not in seen_urls:
-                    stock_data.articles.append(article)
-                    seen_urls.add(article.url)
+            stock_data.fetch_and_append_sentiment(sentiment_class)
 
 def main():
     sentiment_classes = [

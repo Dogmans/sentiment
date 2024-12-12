@@ -27,6 +27,15 @@ class StockData:
     def sentiment_count(self) -> int:
         return len(self.articles)
 
+    def fetch_and_append_sentiment(self, sentiment_class) -> None:
+        """Fetch sentiment data and append unique articles"""
+        seen_urls = {article.url for article in self.articles}
+        new_articles = sentiment_class.fetch_data(self)
+        for article in new_articles:
+            if article.url not in seen_urls:
+                self.articles.append(article)
+                seen_urls.add(article.url)
+
 # TODO - add sector and region
 def get_sp500_stocks() -> Dict[str, StockData]:
     url = "https://stockanalysis.com/list/sp-500-stocks/"

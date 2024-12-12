@@ -3,26 +3,15 @@ import re
 import nltk
 import time
 import requests
+from bs4 import BeautifulSoup
 import torch
 from nltk.tokenize import sent_tokenize
 from typing import List
 from dataclasses import dataclass
 from typing import List, Dict, Tuple
+from article import Article
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
-
-@dataclass
-class Article:
-    """Represents an article with its relevant chunks of text"""
-    title: str
-    url: str
-    chunks: List[str]
-    @property
-    def sentiment_score(self):
-        if not self.chunks:
-            return 0
-        chunk_sentiments = [self.analyze_text(chunk) for chunk in self.chunks]
-        return sum(chunk_sentiments) / len(chunk_sentiments)
 
 class SentimentAnalysis:
     def __init__(self, requests_per_second=10):
@@ -97,8 +86,11 @@ class SentimentAnalysis:
             # Clean the text
             text = re.sub(r'\s+', ' ', text).strip()
             
-            # Get sentiment
-            result = self.sentiment_pipeline(text)[0]
+            # Get sentiment - ensure text is a list for batch processing
+            results = self.sentiment_pipeline([text])
+            if not results:
+                return 0
+            result = results[0]
             return 1 if result['label'] == 'POSITIVE' else -1
             
         except Exception as e:
