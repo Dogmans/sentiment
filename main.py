@@ -7,10 +7,11 @@ from twitter_sentiment import TwitterSentiment
 from reddit_sentiment import RedditSentiment
 from web_sentiment import WebScrapingSentiment
 from rss_sentiment import RSSFeedSentiment
-from stocks import get_sp500_stocks
-from typing import Dict, List
+from sentiment_analysis import SentimentAnalysis
+from stocks import get_sp500_stocks, StockData
+from typing import Dict, List, Sequence
 
-def process_stocks(stocks: Dict[str, StockData], sentiment_classes: List[SentimentAnalysis]):
+def process_stocks(stocks: Dict[str, StockData], sentiment_classes: Sequence[SentimentAnalysis]):
     """Process stocks and analyze sentiment"""
     total_stocks = len(stocks)
     processed = 0
