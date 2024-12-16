@@ -43,15 +43,16 @@ def main():
     current_date = datetime.now().date().isoformat()
     csv_file = 'sentiment_results.csv'
     file_exists = os.path.isfile(csv_file)
-    
-    with open(csv_file, 'a', newline='') as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(['Date'] + list(asdict(next(iter(stocks.values()))).keys()))
-        
-        for symbol, stock_data in stocks.items():
-            writer.writerow([current_date] + list(asdict(stock_data).values()))
-            print(f"Symbol: {stock_data.symbol}, Company: {stock_data.company_name}, Average Sentiment: {stock_data.average_sentiment}, Results: {stock_data.sentiment_count}")
+
+    if stocks:
+        with open(csv_file, 'a', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['Date'] + list(asdict(next(iter(stocks.values()))).keys()))
+            
+            for symbol, stock_data in stocks.items():
+                writer.writerow([current_date] + list(asdict(stock_data).values()))
+                print(f"Symbol: {stock_data.symbol}, Company: {stock_data.company_name}, Average Sentiment: {stock_data.average_sentiment}, Results: {stock_data.sentiment_count}")
 
 if __name__ == "__main__":
     main()

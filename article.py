@@ -38,12 +38,12 @@ class Article:
             total_score = 0.0
             total_weight = 0.0
 
-            for label, score in zip(result['labels'], result['scores']):
-                total_score += label_to_score[label] * score
+            for label, score in zip(result['labels'], result['scores']):  # type: ignore
+                total_score += label_to_score[label] * score  # type: ignore
                 total_weight += score
 
             # Final sentiment score if total_weight != 0: final_score = total_score / total_weight else: final_score = 0.0
-            return total_score / total_weight if total_weight != 0 else 0
+            return total_score / total_weight if total_weight != 0 else 0  # type: ignore
             
         except Exception as e:
             print(f"Error analyzing text: {str(e)}")

@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 from article import Article
 from dataclasses import dataclass, field
 from typing import Dict, List
+import yfinance as yf
+import pandas as pd
+import time
 
 @dataclass
 class StockData:
@@ -12,6 +15,7 @@ class StockData:
     price: str
     change: str
     revenue: str
+    sector: str = ""
     articles : List[Article] = field(default_factory=list)
 
     @property
@@ -37,29 +41,37 @@ class StockData:
                 self.articles.append(article)
                 seen_urls.add(article.url)
 
-# TODO - add sector and region
+
+def get_stock_data(ticker):
+    time.sleep(0.1)  # 100ms delay
+    stock = yf.Ticker(ticker)
+    info = stock.info
+
+    prev_close = info.get('previousClose')
+    '''
+    current_price = info.get('ask')
+    price_change_percent = ((current_price - prev_close) / prev_close) * 100 if prev_close else None
+    '''
+
+    return {
+        'Ticker': ticker,
+        'Company': info.get('shortName'),
+        'Sector': info.get('sector'),
+        'Industry': info.get('industry'),
+        'Market Cap': info.get('marketCap'),
+        'Previous Close': prev_close
+    }
+
+
+# TODO - add region
 def get_sp500_stocks() -> Dict[str, StockData]:
-    url = "https://stockanalysis.com/list/sp-500-stocks/"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    
-    # Find the main table and extract all data
+
+    url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+    sp500_table = pd.read_html(url)
+    sp500_df = sp500_table[0]
+
     stocks_data = {}
-    
-    main_table = soup.find('table', id='main-table')
-    if main_table:
-        rows = main_table.find('tbody').find_all('tr')
-        for row in rows:
-            cols = row.find_all('td')
-            if len(cols) >= 7:  # Ensure we have all columns
-                symbol = cols[1].text.strip().upper()
-                stocks_data[symbol] = StockData(
-                    symbol=symbol,
-                    company_name=cols[2].text.strip(),
-                    market_cap=cols[3].text.strip(),
-                    price=cols[4].text.strip(),
-                    change=cols[5].text.strip(),
-                    revenue=cols[6].text.strip()
-                )
+    for symbol in sp500_df['Symbol']:
+        stocks_data[symbol] = get_stock_data(symbol)
     
     return stocks_data
