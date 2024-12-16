@@ -4,13 +4,14 @@ from transformers import pipeline
 import re
 import torch
 
-@dataclass
+
 class Article:
     """Represents an article with its relevant chunks of text"""
-    title: str
-    url: str
-    chunks: List[str]
-    sentiment_pipeline: pipeline = field(default_factory=lambda: pipeline("sentiment-analysis", device=0 if torch.cuda.is_available() else -1))
+    def __init__(self, title, url, chunks, requests_per_second=10):
+        self.title = title
+        self.url = url
+        self.chunks = chunks
+        self.sentiment_pipeline = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device=0 if torch.cuda.is_available() else -1)
 
     def analyze_text(self, text: str) -> int:
         """Analyze the sentiment of a text chunk using LLM."""
@@ -22,11 +23,27 @@ class Article:
             text = re.sub(r'\s+', ' ', text).strip()
             
             # Get sentiment - ensure text is a list for batch processing
-            results = self.sentiment_pipeline([text])
-            if not results:
-                return 0
-            result = results[0]
-            return 1 if result['label'] == 'POSITIVE' else -1
+            label_to_score = {
+                "very negative": -1.0,
+                "negative": -0.5,
+                "neutral": 0.0,
+                "positive": 0.5,
+                "very positive": 1.0
+            }
+
+            # Run the pipeline
+            result = self.sentiment_pipeline(text, candidate_labels=list(label_to_score.keys()))
+
+            # Calculate the weighted average score
+            total_score = 0.0
+            total_weight = 0.0
+
+            for label, score in zip(result['labels'], result['scores']):
+                total_score += label_to_score[label] * score
+                total_weight += score
+
+            # Final sentiment score if total_weight != 0: final_score = total_score / total_weight else: final_score = 0.0
+            return total_score / total_weight if total_weight != 0 else 0
             
         except Exception as e:
             print(f"Error analyzing text: {str(e)}")
