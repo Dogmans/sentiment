@@ -42,9 +42,9 @@ class StockData:
                 seen_urls.add(article.url)
 
 
-def get_stock_data(ticker):
+def get_stock_data(symbol):
     time.sleep(0.1)  # 100ms delay
-    stock = yf.Ticker(ticker)
+    stock = yf.Ticker(symbol)
     info = stock.info
 
     prev_close = info.get('previousClose')
@@ -54,7 +54,7 @@ def get_stock_data(ticker):
     '''
 
     return {
-        'Ticker': ticker,
+        'Symbol': symbol,
         'Company': info.get('shortName'),
         'Sector': info.get('sector'),
         'Industry': info.get('industry'),
