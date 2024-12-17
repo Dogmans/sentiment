@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import List
 from transformers import pipeline
 import re
 import torch
@@ -7,9 +6,9 @@ import torch
 
 class Article:
     """Represents an article with its relevant chunks of text"""
-    def __init__(self, title, url, chunks, requests_per_second=10):
+    def __init__(self, title, link, chunks, requests_per_second=10):
         self.title = title
-        self.url = url
+        self.link = link
         self.chunks = chunks
         self.sentiment_pipeline = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device=0 if torch.cuda.is_available() else -1)
 
