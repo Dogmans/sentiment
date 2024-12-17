@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import date
 import os
 import time
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import pandas as pd
 from yfinance import Ticker
@@ -19,27 +19,77 @@ retrieval_classes = [
     RSSArticleRetrieval('https://www.msn.com/en-us/money/rss'),
 ]
 
+
+class CachedTicker:
+    def __init__(self, symbol):
+        self.symbol = symbol
+        self.filename = f'{symbol}_ticker_data.json'
+        self.loaded_from_cache = False
+        self.data = self.load_cached_data() or self.fetch_and_cache_data()
+
+    def load_cached_data(self):
+        """Load ticker data from cache file if it exists and is from today."""
+        if os.path.exists(self.filename):
+            with open(self.filename, 'r') as file:
+                cached_data = json.load(file)
+                cache_date = cached_data.get('date')
+                if cache_date == date.today().isoformat():
+                    self.loaded_from_cache = True
+                    return cached_data
+        return None
+
+    def fetch_and_cache_data(self):
+        """Fetch ticker data from Yahoo Finance and cache it."""
+        ticker = yf.Ticker(self.symbol)
+        ticker_data = {
+            'info': ticker.info,
+            'history': ticker.history(period='1d').to_dict(),
+            'news': ticker._news,
+            'date': date.today().isoformat()
+        }
+        with open(self.filename, 'w') as file:
+            json.dump(ticker_data, file)
+        self.loaded_from_cache = False
+        return ticker_data
+
+    @property
+    def info(self):
+        return self.data['info']
+
+    @property
+    def history(self):
+        return pd.DataFrame(self.data['history'])
+
+    @property
+    def news(self):
+        return self.data['news']
+
+
 @dataclass
 class StockData:
     ticker : Ticker = None
     symbol : str = None
-    articles : List[article.Article] = None
+    _articles : List[article.Article] = []
 
-    def _fetch_and_append_articles(self, retrieval: Any) -> None:
+    @property
+    def articles(self) -> List[article.Article]:
         """Fetch sentiment data and append unique articles"""
-        if self.articles:
-            return
-        seen_urls = {article.link for article in self.articles}
-        new_articles = retrieval.fetch_data(self)
-        for article in new_articles:
-            if article.link not in seen_urls:
-                self.articles.append(article)
-                seen_urls.add(article.link)
+        if self._articles:
+            return self._articles
+
+        seen_urls = {article.link for article in self._articles}
+
+        for retrieval in retrieval_classes:
+            new_articles = retrieval.fetch_data(self)
+            for article in new_articles:
+                if article.link not in seen_urls:
+                    self._articles.append(article)
+                    seen_urls.add(article.link)
+        
+        return self._articles
 
     @property
     def total_sentiment(self) -> float:
-        for retrieval in retrieval_classes:
-            self._fetch_and_append_articles(retrieval)
         return sum(article.sentiment_score for article in self.articles)
 
     @property
@@ -95,7 +145,9 @@ def get_sp500_stocks() -> Dict[str, StockData]:
 
     stocks_data = {}
     for symbol in sp500_df['Symbol']:
-        time.sleep(0.5)  # 500ms delay
-        stocks_data[symbol] = StockData(symbol=symbol, ticker=Ticker(symbol))
+        cached_ticker = CachedTicker(symbol)
+        stocks_data[symbol] = StockData(symbol=symbol, ticker=cached_ticker)
+        if not cached_ticker.loaded_from_cache:
+            time.sleep(0.5)  # 500ms delay so we don't hit the rate limit
     
     return stocks_data

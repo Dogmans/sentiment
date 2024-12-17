@@ -1,5 +1,5 @@
 # main.py
-from stocks import get_sp500_stocks, StockData
+from stocks import get_sp500_stocks
 
 def main():
     # Get stock data
