@@ -1,12 +1,14 @@
 import csv
 from dataclasses import dataclass
 from datetime import date
+import json
 import os
+import sqlite3
 import time
 from typing import Dict, List
 
 import pandas as pd
-from yfinance import Ticker
+import yfinance as yf
 
 import article
 from retrieval.rss_article_retrieval import RSSArticleRetrieval
@@ -22,9 +24,62 @@ retrieval_classes = [
 
 @dataclass
 class StockData:
-    ticker : Ticker = None
-    symbol : str = None
-    _articles : List[article.Article] = []
+    symbol: str
+    _articles: List[article.Article] = None
+    _ticker_data: Dict = None
+    db_path: str = 'ticker_cache.db'
+
+    def __post_init__(self):
+        self._articles = []
+        self._init_db()
+        self._ticker_data = self.load_cached_data() or self.fetch_and_cache_data()
+
+    def _init_db(self):
+        """Initialize SQLite database and create table if it doesn't exist."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ticker_cache (
+                    symbol TEXT,
+                    date TEXT,
+                    data TEXT,
+                    PRIMARY KEY (symbol, date)
+                )
+            ''')
+            conn.commit()
+
+    def load_cached_data(self):
+        """Load ticker data from SQLite if it exists and is from today."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT data FROM ticker_cache WHERE symbol = ? AND date = ?',
+                (self.symbol, date.today().isoformat())
+            )
+            result = cursor.fetchone()
+            if result:
+                return json.loads(result[0])
+        return None
+
+    def fetch_and_cache_data(self):
+        """Fetch ticker data from Yahoo Finance and cache it in SQLite."""
+        ticker = yf.Ticker(self.symbol)
+        ticker_data = {
+            'info': ticker.info,
+            'history': ticker.history(period='1d').to_dict(),
+            'news': ticker._news,
+            'date': date.today().isoformat()
+        }
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'INSERT OR REPLACE INTO ticker_cache (symbol, date, data) VALUES (?, ?, ?)',
+                (self.symbol, date.today().isoformat(), json.dumps(ticker_data))
+            )
+            conn.commit()
+        
+        return ticker_data
 
     @property
     def articles(self) -> List[article.Article]:
@@ -55,35 +110,46 @@ class StockData:
 
     @property
     def sentiment_count(self) -> int:
-        # TODO - make articles a property so it always retrieves as needed
         return len(self.articles)
 
-    # Function to write ticker info to CSV
-    def write_to_csv(self, filename):
-        self.save_sentiment_data()
+    def update_sentiment_data(self):
+        """Update ticker data with sentiment analysis in the database."""
+        ticker_data = self.load_cached_data()
+        if ticker_data:
+            ticker_data['sentiment'] = {
+                'count': self.sentiment_count,
+                'average': self.average_sentiment
+            }
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    'UPDATE ticker_cache SET data = ? WHERE symbol = ? AND date = ?',
+                    (json.dumps(ticker_data), self.symbol, date.today().isoformat())
+                )
+                conn.commit()
+                self._ticker_data = ticker_data
 
-    def save_sentiment_data(self):
-        """Save ticker data with sentiment analysis to the database."""
-        if not hasattr(self.ticker, 'save_sentiment_data'):
-            return
-        
-        self.ticker.save_sentiment_data(
-            sentiment_count=self.sentiment_count,
-            average_sentiment=self.average_sentiment
-        )
+    @property
+    def info(self):
+        return self._ticker_data['info']
+
+    @property
+    def history(self):
+        return pd.DataFrame(self._ticker_data['history'])
+
+    @property
+    def news(self):
+        return self._ticker_data['news']
 
 
 def get_sp500_stocks() -> Dict[str, StockData]:
-
     url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
     sp500_table = pd.read_html(url)
     sp500_df = sp500_table[0]
 
     stocks_data = {}
     for symbol in sp500_df['Symbol']:
-        cached_ticker = CachedTicker(symbol)
-        stocks_data[symbol] = StockData(symbol=symbol, ticker=cached_ticker)
-        if not cached_ticker.loaded_from_cache:
-            time.sleep(0.5)  # 500ms delay so we don't hit the rate limit
+        stocks_data[symbol] = StockData(symbol=symbol)
+        time.sleep(0.5)  # 500ms delay so we don't hit the rate limit
     
     return stocks_data
