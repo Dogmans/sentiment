@@ -3,12 +3,15 @@ from dataclasses import dataclass
 from datetime import date
 import json
 import os
-import sqlite3
 import time
 from typing import Dict, List
 
 import pandas as pd
 import yfinance as yf
+from sqlalchemy import create_engine, Column, String, JSON, Date
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import func
 
 import article
 from retrieval.rss_article_retrieval import RSSArticleRetrieval
@@ -21,13 +24,22 @@ retrieval_classes = [
     RSSArticleRetrieval('https://www.msn.com/en-us/money/rss'),
 ]
 
+Base = declarative_base()
+
+class TickerCache(Base):
+    __tablename__ = 'ticker_cache'
+
+    symbol = Column(String, primary_key=True)
+    date = Column(Date, primary_key=True)
+    data = Column(JSON)
+
 
 @dataclass
 class Stock:
     symbol: str
     _articles: List[article.Article] = None
     _ticker_data: Dict = None
-    db_path: str = 'ticker_cache.db'
+    db_url: str = 'sqlite:///ticker_cache.db'
 
     def __post_init__(self):
         self._articles = []
@@ -35,34 +47,24 @@ class Stock:
         self._ticker_data = self.load_cached_data() or self.fetch_and_cache_data()
 
     def _init_db(self):
-        """Initialize SQLite database and create table if it doesn't exist."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS ticker_cache (
-                    symbol TEXT,
-                    date TEXT,
-                    data TEXT,
-                    PRIMARY KEY (symbol, date)
-                )
-            ''')
-            conn.commit()
+        """Initialize SQLAlchemy engine and create tables if they don't exist."""
+        self.engine = create_engine(self.db_url)
+        Base.metadata.create_all(self.engine)
+        self.Session = sessionmaker(bind=self.engine)
 
     def load_cached_data(self):
-        """Load ticker data from SQLite if it exists and is from today."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                'SELECT data FROM ticker_cache WHERE symbol = ? AND date = ?',
-                (self.symbol, date.today().isoformat())
-            )
-            result = cursor.fetchone()
+        """Load ticker data from database if it exists and is from today."""
+        with self.Session() as session:
+            result = session.query(TickerCache).filter(
+                TickerCache.symbol == self.symbol,
+                TickerCache.date == date.today()
+            ).first()
             if result:
-                return json.loads(result[0])
+                return result.data
         return None
 
     def fetch_and_cache_data(self):
-        """Fetch ticker data from Yahoo Finance and cache it in SQLite."""
+        """Fetch ticker data from Yahoo Finance and cache it."""
         ticker = yf.Ticker(self.symbol)
         ticker_data = {
             'info': ticker.info,
@@ -71,13 +73,14 @@ class Stock:
             'date': date.today().isoformat()
         }
         
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                'INSERT OR REPLACE INTO ticker_cache (symbol, date, data) VALUES (?, ?, ?)',
-                (self.symbol, date.today().isoformat(), json.dumps(ticker_data))
+        with self.Session() as session:
+            cache_entry = TickerCache(
+                symbol=self.symbol,
+                date=date.today(),
+                data=ticker_data
             )
-            conn.commit()
+            session.merge(cache_entry)
+            session.commit()
         
         return ticker_data
 
@@ -120,14 +123,15 @@ class Stock:
                 'count': self.sentiment_count,
                 'average': self.average_sentiment
             }
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    'UPDATE ticker_cache SET data = ? WHERE symbol = ? AND date = ?',
-                    (json.dumps(ticker_data), self.symbol, date.today().isoformat())
-                )
-                conn.commit()
-                self._ticker_data = ticker_data
+            with self.Session() as session:
+                cache_entry = session.query(TickerCache).filter(
+                    TickerCache.symbol == self.symbol,
+                    TickerCache.date == date.today()
+                ).first()
+                if cache_entry:
+                    cache_entry.data = ticker_data
+                    session.commit()
+                    self._ticker_data = ticker_data
 
     @property
     def info(self):
