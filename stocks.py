@@ -60,36 +60,17 @@ class StockData:
 
     # Function to write ticker info to CSV
     def write_to_csv(self, filename):
-        with open(filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            
-            # Write header
-            if not os.path.isfile(filename):
-                writer.writerow([
-                    "Date", "Symbol", "Company Name", "Market Cap", "Price", 
-                    "Previous Close", "Open", "High", "Low", "Volume", "News Title", "News URL",
-                    "Sentiment Count", "Average Sentiment"
-                ])
-            
-            # Write subset of ticker info
-            info = self.ticker.info
+        self.save_sentiment_data()
 
-            print(info)
-
-            writer.writerow(
-                date.today().isoformat(),
-                info.get('symbol'),
-                info.get('shortName'),
-                info.get('marketCap'),
-                info.get('regularMarketPrice'),
-                info.get('previousClose'),
-                info.get('open'),
-                info.get('dayHigh'),
-                info.get('dayLow'),
-                info.get('volume'),
-                self.sentiment_count,
-                self.average_sentiment
-            )
+    def save_sentiment_data(self):
+        """Save ticker data with sentiment analysis to the database."""
+        if not hasattr(self.ticker, 'save_sentiment_data'):
+            return
+        
+        self.ticker.save_sentiment_data(
+            sentiment_count=self.sentiment_count,
+            average_sentiment=self.average_sentiment
+        )
 
 
 def get_sp500_stocks() -> Dict[str, StockData]:
