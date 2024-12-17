@@ -23,7 +23,7 @@ retrieval_classes = [
 
 
 @dataclass
-class StockData:
+class Stock:
     symbol: str
     _articles: List[article.Article] = None
     _ticker_data: Dict = None
@@ -142,14 +142,14 @@ class StockData:
         return self._ticker_data['news']
 
 
-def get_sp500_stocks() -> Dict[str, StockData]:
+def get_sp500_stocks() -> Dict[str, Stock]:
     url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
     sp500_table = pd.read_html(url)
     sp500_df = sp500_table[0]
 
     stocks_data = {}
     for symbol in sp500_df['Symbol']:
-        stocks_data[symbol] = StockData(symbol=symbol)
+        stocks_data[symbol] = Stock(symbol=symbol)
         time.sleep(0.5)  # 500ms delay so we don't hit the rate limit
     
     return stocks_data
