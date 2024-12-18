@@ -1,9 +1,10 @@
-import feedparser
 from datetime import datetime
 from typing import List
 
-from yfinance import Ticker
+import feedparser
+
 from article import Article
+
 from .article_retrieval import ArticleRetrieval
 
 class RSSArticleRetrieval(ArticleRetrieval):
@@ -33,10 +34,10 @@ class RSSArticleRetrieval(ArticleRetrieval):
         except (TypeError, ValueError):
             return False
 
-    def fetch_data(self, ticker: Ticker) -> List[Article]:
+    def fetch_data(self, data) -> List[Article]:
         entries = self._get_feed_entries()
         articles = []
-        print(f"\nProcessing RSS feed articles for {ticker.symbol} from {self.feed_url}:")
+        print(f"\nProcessing RSS feed articles for {data['info']['symbol']} from {self.feed_url}:")
 
         for entry in entries:
             # Check if entry was published today
@@ -49,7 +50,7 @@ class RSSArticleRetrieval(ArticleRetrieval):
             base_url = link.split('?')[0]
             
             if link:
-                relevant_chunks = self.get_link_relevant_chunks(link, ticker)
+                relevant_chunks = self.get_link_relevant_chunks(link, data['info'])
                 if relevant_chunks:
                     print(f"  - {title}")
                     articles.append(Article(title=title, link=base_url, chunks=relevant_chunks))

@@ -20,7 +20,7 @@ from retrieval.ticker_article_retrieval import TickerArticleRetrieval
 retrieval_classes = [
     TickerArticleRetrieval(),
     RSSArticleRetrieval('http://feeds.marketwatch.com/marketwatch/topstories/'),
-    RSSArticleRetrieval('https://www.reutersagency.com/feed/?best-topics=business-finance&post_type=best'),
+    RSSArticleRetrieval('https://www.reutersagency.com/feed/?best-topics=business-finance&post-type=best'),
     RSSArticleRetrieval('https://www.msn.com/en-us/money/rss'),
 ]
 
@@ -68,8 +68,7 @@ class Stock:
         ticker = yf.Ticker(self.symbol)
         ticker_data = {
             'info': ticker.info,
-            'history': ticker.history(period='1d').to_dict(),
-            'news': ticker._news,
+            'news': ticker.news,
             'date': date.today().isoformat()
         }
         
@@ -93,7 +92,7 @@ class Stock:
         seen_urls = {article.link for article in self._articles}
 
         for retrieval in retrieval_classes:
-            new_articles = retrieval.fetch_data(self)
+            new_articles = retrieval.fetch_data(self._ticker_data)
             for article in new_articles:
                 if article.link not in seen_urls:
                     self._articles.append(article)
@@ -136,10 +135,6 @@ class Stock:
     @property
     def info(self):
         return self._ticker_data['info']
-
-    @property
-    def history(self):
-        return pd.DataFrame(self._ticker_data['history'])
 
     @property
     def news(self):

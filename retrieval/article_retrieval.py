@@ -79,7 +79,7 @@ class ArticleRetrieval:
         text = ' '.join(text.split())
         return text.lower()
 
-    def get_link_relevant_chunks(self, link, stock_data):
+    def get_link_relevant_chunks(self, link, info):
         """
         Returns list of relevant text chunks at a given link.
         """
@@ -93,14 +93,14 @@ class ArticleRetrieval:
             article_text = ' '.join([p.get_text() for p in paragraphs])
             
             if article_text:
-                return self.extract_relevant_chunks(article_text, stock_data)
+                return self.extract_relevant_chunks(article_text, info)
                     
         except Exception as e:
             print(f"Error fetching article from {link}: {str(e)}")
             
         return []
 
-    def extract_relevant_chunks(self, text, ticker):
+    def extract_relevant_chunks(self, text, info):
         """
         Check if the text is relevant to the stock using zero-shot classification.
         Analyzes text in chunks and returns any relevant chunks.
@@ -118,7 +118,7 @@ class ArticleRetrieval:
             # Prepare labels for zero-shot classification
             hypothesis_template = "This text is about {}."
             labels = [
-                f"{ticker.company_name} ({ticker.symbol})",
+                f"{info.shortName} ({info.symbol})",
                 "unrelated company or topic"
             ]
             
@@ -142,7 +142,7 @@ class ArticleRetrieval:
             print(f"Error checking relevance: {str(e)}")
             return []
 
-    def fetch_data(self, ticker):
+    def fetch_data(self, data):
         """
         Abstract method to be implemented by subclasses.
         Should return a list of relevant articles.
