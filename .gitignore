@@ -43,3 +43,4 @@ launch.json
 TODO.md
 *.csv
 *.json
+*.db
