@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 
 from article import Article
 from .article_retrieval import ArticleRetrieval
@@ -11,7 +12,7 @@ class TickerArticleRetrieval(ArticleRetrieval):
 
     def is_published_today(self, published_time):
         """Check if the article was published today"""
-        return True
+        return datetime.fromtimestamp(published_time).date() == datetime.now().date()
 
     def fetch_data(self, data) -> List[Article]:
         articles = []
@@ -19,7 +20,7 @@ class TickerArticleRetrieval(ArticleRetrieval):
 
         for entry in data['news']:
             # Check if entry was published today
-            if not self.is_published_today(entry.get('published_parsed')):
+            if not self.is_published_today(entry.get('providerPublishTime')):
                 continue
 
             title = entry.get('title', '')
