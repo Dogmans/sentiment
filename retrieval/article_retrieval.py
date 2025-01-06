@@ -4,7 +4,7 @@ import time
 from bs4 import BeautifulSoup
 import nltk
 from nltk.tokenize import sent_tokenize
-import requests
+from requests_html import HTMLSession
 import torch
 from transformers import pipeline
 nltk.download('punkt', quiet=True)
@@ -37,7 +37,9 @@ class ArticleRetrieval:
             time.sleep(self.delay - time_since_last)
         
         # Make the request and update last request time
-        response = requests.get(url)
+        session = HTMLSession()
+        response = session.get(url)
+        response.html.render()
         self.last_request_time = time.time()
         
         # Cache the response
