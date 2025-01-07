@@ -4,13 +4,19 @@ import time
 from bs4 import BeautifulSoup
 import nltk
 from nltk.tokenize import sent_tokenize
-from requests_html import HTMLSession
 import torch
 from transformers import pipeline
+
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
 
 class ArticleRetrieval:
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+
     def __init__(self, requests_per_second=10):
         self.relevance_pipeline = pipeline(
             "zero-shot-classification",
@@ -37,14 +43,12 @@ class ArticleRetrieval:
             time.sleep(self.delay - time_since_last)
         
         # Make the request and update last request time
-        session = HTMLSession()
-        response = session.get(url)
-        response.html.render()
+        page_source = self.driver.get(url)
         self.last_request_time = time.time()
         
         # Cache the response
-        self._url_cache[url] = response
-        return response
+        self._url_cache[url] = page_source
+        return page_source
 
     def chunk_text(self, text):
         """
@@ -87,8 +91,8 @@ class ArticleRetrieval:
         """
         try:
             # Fetch and parse the full article using cached request
-            article_response = self._rate_limited_request(link)
-            article_soup = BeautifulSoup(article_response.content, 'html.parser')
+            page_source = self._rate_limited_request(link)
+            article_soup = BeautifulSoup(page_source, 'html.parser')
             
             # Extract article text from paragraphs
             paragraphs = article_soup.find_all('p')
