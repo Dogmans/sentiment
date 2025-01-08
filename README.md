@@ -13,7 +13,7 @@ pip install -r requirements.txt
 2. Set up API credentials for platforms:
    - [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
    - [Reddit Apps](https://www.reddit.com/prefs/apps)
-   - No API credentials needed for Motley Fool and MSN Money
+   - No API credentials needed for RSS feeds
 
 3. Configure your credentials in the project
 
@@ -21,8 +21,8 @@ pip install -r requirements.txt
 - Multi-platform Sentiment Analysis:
   - Twitter sentiment analysis
   - Reddit discussions analysis
-  - Motley Fool articles analysis
-  - MSN Money news analysis
+  - Yahoo Finance sentiment analysis
+  - RSS news analysis
 - Stock symbol tracking
 - Sentiment scoring
 - Cross-platform comparison
@@ -54,17 +54,7 @@ python main.py
 ## Supported Platforms
 - Twitter: Social media sentiment analysis
 - Reddit: Community discussion sentiment
-- Motley Fool: Financial news analysis
-- MSN Money: Market news sentiment
-
-## Project Structure
-```
-├── main.py                   # Main script
-├── requirements.txt          # Required packages
-├── sentiment_analysis.py     # Sentiment analysis implementations
-├── .env                      # Environment variables (not in git)
-└── README.md                 # Documentation
-```
+- RSS: Market news sentiment
 
 ## Output Format
 For each platform and stock symbol, the bot outputs:
