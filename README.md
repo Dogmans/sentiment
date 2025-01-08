@@ -57,6 +57,12 @@ python main.py
 - RSS: Market news sentiment
 
 ## Output Format
+Stock information is stored in the database.
 For each platform and stock symbol, the bot outputs:
-- Text content analyzed
-- Sentiment score
+- Stock information taken from Yahoo Finance
+- Sentiment score based on the articles
+- Sentiment count
+
+## TODO
+- Current issues retrieving articles that are protected by a Capcha or other security measures
+- Implement further functionality to make use of the data to look for anomalies and opportunities
