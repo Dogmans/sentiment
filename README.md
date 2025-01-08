@@ -52,8 +52,9 @@ python main.py
 ```
 
 ## Supported Platforms
-- Twitter: Social media sentiment analysis
+- Twitter: Social media sentiment
 - Reddit: Community discussion sentiment
+- Yahoo Finance: Stock market sentiment
 - RSS: Market news sentiment
 
 ## Output Format
