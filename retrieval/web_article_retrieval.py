@@ -12,7 +12,7 @@ class WebArticleRetrieval(ArticleRetrieval):
         """Fetch and analyze articles from web search"""
         search_url = f"https://www.google.com/search?q=site:{self.domain}+{data['info']['symbol']}+{data['info']['shortName']}"
         response = self._rate_limited_request(search_url)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        soup = BeautifulSoup(response, 'html.parser')
         
         # Find all search result links
         articles = []
