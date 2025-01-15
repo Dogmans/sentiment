@@ -27,6 +27,38 @@ class ArticleRetrieval:
         self.delay = 1.0 / requests_per_second if requests_per_second > 0 else 0
         self.last_request_time = 0
         self._url_cache = {}  # Cache for URL responses
+    
+    def _is_article_page(self, page_source):
+        """
+        Use zero-shot classification to determine if the page source is likely an article.
+        """
+        try:
+            # Parse the page source with BeautifulSoup
+            soup = BeautifulSoup(page_source, 'html.parser')
+            text = ' '.join([p.get_text() for p in soup.find_all('p')])
+
+            # If text is too short, it's unlikely to be an article
+            if len(text.split()) < 50:
+                return False
+
+            # Use the zero-shot classifier to check relevance
+            hypothesis_template = "This text is an article."
+            labels = ["article", "non-article"]
+
+            result = self.relevance_pipeline(
+                text,
+                labels,
+                hypothesis_template=hypothesis_template,
+                multi_label=False
+            )
+
+            # Consider the page an article if the confidence for the "article" label is high enough
+            return result['labels'][0] == "article" and result['scores'][0] > 0.7
+
+        except Exception as e:
+            print(f"Error determining article status: {str(e)}")
+            return False
+
 
     def _rate_limited_request(self, url):
         """Make a rate-limited request with caching"""
@@ -43,8 +75,14 @@ class ArticleRetrieval:
             time.sleep(self.delay - time_since_last)
         
         # Make the request and update last request time
-        page_source = self.driver.get(url)
+        self.driver.get(url)
+        page_source = self.driver.page_source
         self.last_request_time = time.time()
+        
+        # Use relevance pipeline to check if the page looks like an article
+        if not self._is_article_page(page_source):
+            input("CAPTCHA detected. Please complete the CAPTCHA and press Enter to continue...")
+            page_source = self.driver.page_source
         
         # Cache the response
         self._url_cache[url] = page_source
