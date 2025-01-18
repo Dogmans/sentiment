@@ -112,7 +112,6 @@ class ArticleRetrieval:
             solver = ImageSliderCaptcha(self.driver, self.blip_processor, self.blip_model)
         solver.solve()
 
-
     def chunk_text(self, text):
         sentences = nltk.sent_tokenize(text)
         chunks = []
