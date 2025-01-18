@@ -28,8 +28,6 @@ class ArticleRetrieval:
         )
         self.blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
         self.blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-        self.captcha_solver_grid = ImageGridCaptcha(self.driver, self.blip_processor, self.blip_model)
-        self.captcha_solver_slider = ImageSliderCaptcha(self.driver, self.blip_processor, self.blip_model)
         self.max_length = 512
         self.delay = 1.0 / requests_per_second if requests_per_second > 0 else 0
         self.last_request_time = 0
@@ -50,11 +48,6 @@ class ArticleRetrieval:
         elif "slider" in solution_text.lower():
             return 'slider'
         return None
-
-    def _detect_captcha_type(self):
-        captcha_element = self.driver.find_element(By.CSS_SELECTOR, 'div.captcha-container')  # Adjust the selector as needed
-        screenshot = self._capture_screenshot(captcha_element)
-        return self._detect_captcha_type_image(screenshot)
 
     def _is_article_page(self, page_source):
         try:
@@ -106,11 +99,19 @@ class ArticleRetrieval:
         return bool(soup.find('div', class_='g-recaptcha') or soup.find('iframe', title='recaptcha challenge'))
 
     def _solve_captcha(self):
-        captcha_type = self._detect_captcha_type()
+        # Capture a screenshot of the entire page
+        screenshot = self.driver.get_screenshot_as_png()
+        
+        # Determine CAPTCHA type using the screenshot
+        captcha_type = self._detect_captcha_type_image(screenshot)
+        
+        # Choose the appropriate solver based on CAPTCHA type
         if captcha_type == 'grid':
-            self.captcha_solver_grid.solve()
+            solver = ImageGridCaptcha(self.driver, self.blip_processor, self.blip_model)
         elif captcha_type == 'slider':
-            self.captcha_solver_slider.solve()
+            solver = ImageSliderCaptcha(self.driver, self.blip_processor, self.blip_model)
+        solver.solve()
+
 
     def chunk_text(self, text):
         sentences = nltk.sent_tokenize(text)
