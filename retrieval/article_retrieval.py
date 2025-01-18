@@ -1,20 +1,20 @@
-import re
 import time
 from PIL import Image
 from io import BytesIO
 from bs4 import BeautifulSoup
 import nltk
-from nltk.tokenize import sent_tokenize
 import torch
 from transformers import pipeline, BlipForConditionalGeneration, BlipProcessor
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from image_slider_captcha import ImageSliderCaptcha
+from image_grid_captcha import ImageGridCaptcha
+
 
 nltk.download('punkt', quiet=True)
+
 
 class ArticleRetrieval:
 
@@ -28,10 +28,33 @@ class ArticleRetrieval:
         )
         self.blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
         self.blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+        self.captcha_solver_grid = ImageGridCaptcha(self.driver, self.blip_processor, self.blip_model)
+        self.captcha_solver_slider = ImageSliderCaptcha(self.driver, self.blip_processor, self.blip_model)
         self.max_length = 512
         self.delay = 1.0 / requests_per_second if requests_per_second > 0 else 0
         self.last_request_time = 0
         self._url_cache = {}
+
+    def _capture_screenshot(self, element):
+        # Capture a screenshot of the specified element
+        return element.screenshot_as_png
+
+    def _detect_captcha_type_image(self, image):
+        # Use an image recognition model to determine the CAPTCHA type based on the screenshot
+        inputs = self.blip_processor(images=Image.open(BytesIO(image)), return_tensors="pt")
+        caption = self.blip_model.generate(**inputs)
+        solution_text = self.blip_processor.decode(caption[0], skip_special_tokens=True)
+
+        if "grid" in solution_text.lower():
+            return 'grid'
+        elif "slider" in solution_text.lower():
+            return 'slider'
+        return None
+
+    def _detect_captcha_type(self):
+        captcha_element = self.driver.find_element(By.CSS_SELECTOR, 'div.captcha-container')  # Adjust the selector as needed
+        screenshot = self._capture_screenshot(captcha_element)
+        return self._detect_captcha_type_image(screenshot)
 
     def _is_article_page(self, page_source):
         try:
@@ -83,43 +106,14 @@ class ArticleRetrieval:
         return bool(soup.find('div', class_='g-recaptcha') or soup.find('iframe', title='recaptcha challenge'))
 
     def _solve_captcha(self):
-        try:
-            captcha_iframe = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'iframe[title="recaptcha challenge"]'))
-            )
-            self.driver.switch_to.frame(captcha_iframe)
-
-            # Detect the CAPTCHA prompt text
-            captcha_prompt = self.driver.find_element(By.CSS_SELECTOR, 'div[class*="prompt"]').text
-
-            # Capture all the image elements
-            image_elements = self.driver.find_elements(By.CSS_SELECTOR, 'img.captcha-image')
-
-            images = []
-            for img_element in image_elements:
-                img_src = img_element.get_attribute('src')
-                self.driver.get(img_src)
-                captcha_image = Image.open(BytesIO(self.driver.page_source))
-                images.append((img_element, captcha_image))
-
-            # Process and classify the images based on the CAPTCHA prompt
-            for img_element, img in images:
-                inputs = self.blip_processor(images=img, return_tensors="pt")
-                caption = self.blip_model.generate(**inputs)
-                solution_text = self.blip_processor.decode(caption[0], skip_special_tokens=True)
-
-                # Check if the solution text matches the prompt (e.g., "bus", "bicycle", etc.)
-                if any(word in solution_text.lower() for word in captcha_prompt.lower().split()):
-                    img_element.click()
-
-            self.driver.switch_to.default_content()
-            self.driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]').click()
-
-        except Exception as e:
-            print(f"Error solving CAPTCHA: {str(e)}")
+        captcha_type = self._detect_captcha_type()
+        if captcha_type == 'grid':
+            self.captcha_solver_grid.solve()
+        elif captcha_type == 'slider':
+            self.captcha_solver_slider.solve()
 
     def chunk_text(self, text):
-        sentences = sent_tokenize(text)
+        sentences = nltk.sent_tokenize(text)
         chunks = []
         current_chunk = []
         current_length = 0
@@ -142,7 +136,6 @@ class ArticleRetrieval:
         return chunks
 
     def _preprocess_text(self, text: str) -> str:
-        text = re.sub(r'[^\w\s]', ' ', text)
         text = ' '.join(text.split())
         return text.lower()
 
@@ -168,29 +161,18 @@ class ArticleRetrieval:
             if not chunks:
                 return []
 
-            hypothesis_template = "This text is about {}."
-            labels = [
-                f"{info.shortName} ({info.symbol})",
-                "unrelated company or topic"
-            ]
-            
-            relevant_chunks = []
-            for chunk in chunks:
-                result = self.relevance_pipeline(
-                    chunk,
-                    labels,
-                    hypothesis_template=hypothesis_template,
-                    multi_label=False
-                )
-                
-                if result['labels'][0] == labels[0] and result['scores'][0] > 0.7:
-                    relevant_chunks.append(chunk)
-            
-            return relevant_chunks
-            
-        except Exception as e:
-            print(f"Error checking relevance: {str(e)}")
-            return []
+            hypothesis_template = "This text is relevant to "
+            labels = ["relevant", "not relevant"]
 
-    def fetch_data(self, data):
-        raise NotImplementedError("Subclasses must implement fetch_data")
+            result = self.relevance_pipeline(
+                text,
+                labels,
+                hypothesis_template=hypothesis_template,
+                multi_label=False
+            )
+
+            return result['labels'][0] == "relevant" and result['scores'][0] > 0.7
+
+        except Exception as e:
+            print(f"Error determining relevance: {str(e)}")
+            return False
