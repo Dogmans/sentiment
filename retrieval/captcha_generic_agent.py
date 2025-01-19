@@ -63,13 +63,12 @@ class CaptchaSolvingAgent(Agent):
     def solve_captcha(self):
         while True:
             screenshot = self.driver.get_screenshot_as_png()
+            if self.is_captcha_solved(screenshot):
+                break
             action = self.decide_action(screenshot)
             tool, selector, value = self.parse_action(action)
             self.available_tools()[tool](selector, value)
-            time.sleep(2)  # Give some time for the action to take effect
-            new_screenshot = self.driver.get_screenshot_as_png()
-            if self.is_captcha_solved(new_screenshot):
-                break
+            time.sleep(2)  # Give some time for the action to take effect  
 
     def parse_action(self, action):
         # Parse the action string to extract tool, selector, and value

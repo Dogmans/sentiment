@@ -1,16 +1,12 @@
 import time
-from PIL import Image
-from io import BytesIO
 from bs4 import BeautifulSoup
 import nltk
 import torch
-from transformers import pipeline, BlipForConditionalGeneration, BlipProcessor
+from transformers import pipeline
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
-from image_slider_captcha import ImageSliderCaptcha
-from image_grid_captcha import ImageGridCaptcha
+from captcha_generic_agent import CaptchaSolvingAgent
 
 
 nltk.download('punkt', quiet=True)
@@ -26,28 +22,10 @@ class ArticleRetrieval:
             model="facebook/bart-large-mnli",
             device=0 if torch.cuda.is_available() else -1
         )
-        self.blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-        self.blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
         self.max_length = 512
         self.delay = 1.0 / requests_per_second if requests_per_second > 0 else 0
         self.last_request_time = 0
         self._url_cache = {}
-
-    def _capture_screenshot(self, element):
-        # Capture a screenshot of the specified element
-        return element.screenshot_as_png
-
-    def _detect_captcha_type_image(self, image):
-        # Use an image recognition model to determine the CAPTCHA type based on the screenshot
-        inputs = self.blip_processor(images=Image.open(BytesIO(image)), return_tensors="pt")
-        caption = self.blip_model.generate(**inputs)
-        solution_text = self.blip_processor.decode(caption[0], skip_special_tokens=True)
-
-        if "grid" in solution_text.lower():
-            return 'grid'
-        elif "slider" in solution_text.lower():
-            return 'slider'
-        return None
 
     def _is_article_page(self, page_source):
         try:
@@ -99,18 +77,9 @@ class ArticleRetrieval:
         return bool(soup.find('div', class_='g-recaptcha') or soup.find('iframe', title='recaptcha challenge'))
 
     def _solve_captcha(self):
-        # Capture a screenshot of the entire page
-        screenshot = self.driver.get_screenshot_as_png()
-        
-        # Determine CAPTCHA type using the screenshot
-        captcha_type = self._detect_captcha_type_image(screenshot)
-        
         # Choose the appropriate solver based on CAPTCHA type
-        if captcha_type == 'grid':
-            solver = ImageGridCaptcha(self.driver, self.blip_processor, self.blip_model)
-        elif captcha_type == 'slider':
-            solver = ImageSliderCaptcha(self.driver, self.blip_processor, self.blip_model)
-        solver.solve()
+        captcha_solver = CaptchaSolvingAgent(self.driver)
+        captcha_solver.solve_captcha()
 
     def chunk_text(self, text):
         sentences = nltk.sent_tokenize(text)
