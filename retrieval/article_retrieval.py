@@ -62,19 +62,12 @@ class ArticleRetrieval:
             time.sleep(self.delay - time_since_last)
         
         self.driver.get(url)
-        page_source = self.driver.page_source
         self.last_request_time = time.time()
-        
-        if self._detect_captcha(page_source):
-            self._solve_captcha()
-            page_source = self.driver.page_source
+        self._solve_captcha()
+        page_source = self.driver.page_source
         
         self._url_cache[url] = page_source
         return page_source
-
-    def _detect_captcha(self, page_source):
-        soup = BeautifulSoup(page_source, 'html.parser')
-        return bool(soup.find('div', class_='g-recaptcha') or soup.find('iframe', title='recaptcha challenge'))
 
     def _solve_captcha(self):
         # Choose the appropriate solver based on CAPTCHA type
