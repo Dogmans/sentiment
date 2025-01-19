@@ -6,7 +6,7 @@ from transformers import pipeline
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from captcha_generic_agent import CaptchaSolvingAgent
+from .captcha_generic_agent import CaptchaSolvingAgent
 
 
 nltk.download('punkt', quiet=True)

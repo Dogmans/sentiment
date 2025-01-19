@@ -2,8 +2,9 @@ from PIL import Image
 from io import BytesIO
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 from transformers import BlipProcessor, BlipForConditionalGeneration
-from smolagents import Agent
+from smolagents import ToolCallingAgent
 from webdriver_manager.chrome import ChromeDriverManager
 
 class ClickTool:
@@ -23,14 +24,12 @@ class DragTool:
         action = webdriver.common.action_chains.ActionChains(self.driver)
         action.click_and_hold(element).move_by_offset(offset_x, 0).release().perform()
 
-class CaptchaSolvingAgent(Agent):
+class CaptchaSolvingAgent(ToolCallingAgent):
     def __init__(self, driver):
         super().__init__()
         self.driver = driver
         self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
         self.model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-        self.click_tool = ClickTool(self.driver)
-        self.drag_tool = DragTool(self.driver)
         self.prompt = (
             "You are an agent responsible for solving CAPTCHAs on web pages. "
             "You have access to tools for clicking and dragging elements on the page. "
@@ -39,12 +38,8 @@ class CaptchaSolvingAgent(Agent):
             "If you recognize images to click, click on the appropriate ones. "
             "Your goal is to solve the CAPTCHA and verify if the CAPTCHA is no longer present on the page."
         )
-
-    def available_tools(self):
-        return {
-            "click": self.click_tool.click,
-            "drag": self.drag_tool.drag
-        }
+        self.add_tool("click", ClickTool(driver).click)
+        self.add_tool("drag", DragTool(driver).drag)
 
     def decide_action(self, screenshot):
         # Include the prompt in the analysis
@@ -67,8 +62,8 @@ class CaptchaSolvingAgent(Agent):
                 break
             action = self.decide_action(screenshot)
             tool, selector, value = self.parse_action(action)
-            self.available_tools()[tool](selector, value)
-            time.sleep(2)  # Give some time for the action to take effect  
+            self.call_tool(tool, selector, value)
+            time.sleep(2)  # Give some time for the action to take effect
 
     def parse_action(self, action):
         # Parse the action string to extract tool, selector, and value
@@ -79,6 +74,8 @@ class CaptchaSolvingAgent(Agent):
         return tool, selector, value
 
 # Example usage
+'''
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 agent = CaptchaSolvingAgent(driver)
 agent.solve_captcha()
+'''
