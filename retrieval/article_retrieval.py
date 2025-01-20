@@ -72,7 +72,7 @@ class ArticleRetrieval:
     def _solve_captcha(self):
         # Choose the appropriate solver based on CAPTCHA type
         captcha_solver = CaptchaSolvingAgent(self.driver)
-        captcha_solver.solve_captcha()
+        captcha_solver.solve_task()
 
     def chunk_text(self, text):
         sentences = nltk.sent_tokenize(text)

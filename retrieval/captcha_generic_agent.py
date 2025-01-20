@@ -24,58 +24,40 @@ class DragTool:
         action = webdriver.common.action_chains.ActionChains(self.driver)
         action.click_and_hold(element).move_by_offset(offset_x, 0).release().perform()
 
+
 class CaptchaSolvingAgent(ToolCallingAgent):
     def __init__(self, driver):
-        super().__init__()
         self.driver = driver
         self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-        self.model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-        self.prompt = (
+        model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+
+        tools = {
+            "click": ClickTool(driver).click,
+            "drag": DragTool(driver).drag,
+            "get_screenshot": self.get_screenshot
+        }
+        
+        prompt = (
             "You are an agent responsible for solving CAPTCHAs on web pages. "
-            "You have access to tools for clicking and dragging elements on the page. "
+            "You have access to the following tools: "
+            "- 'get_screenshot': Captures the current screenshot of the web page. "
+            "- 'click': Clicks on a specified element on the web page. "
+            "- 'drag': Drags a specified element to a target position. "
             "Analyze the screenshot provided and determine the necessary actions to solve the CAPTCHA. "
-            "Use the tools available to perform these actions. If you recognize a slider, drag it to the correct position. "
-            "If you recognize images to click, click on the appropriate ones. "
+            "First, use 'get_screenshot' to capture the current state of the CAPTCHA. "
+            "Then, decide on the actions needed to solve the CAPTCHA, such as 'click' or 'drag'. "
+            "Use the tools available to perform these actions. "
             "Your goal is to solve the CAPTCHA and verify if the CAPTCHA is no longer present on the page."
         )
-        self.add_tool("click", ClickTool(driver).click)
-        self.add_tool("drag", DragTool(driver).drag)
+        
+        super().__init__(tools=tools, model=model, processor=self.processor, prompt=prompt)
 
-    def decide_action(self, screenshot):
-        # Include the prompt in the analysis
-        inputs = self.processor(images=Image.open(BytesIO(screenshot)), return_tensors="pt")
-        caption = self.model.generate(**inputs, prompt=self.prompt)
-        action = self.processor.decode(caption[0], skip_special_tokens=True)
-        return action
+    def get_screenshot(self):
+        return self.driver.get_screenshot_as_png()
 
-    def is_captcha_solved(self, screenshot):
-        # Analyze the screenshot to determine if the CAPTCHA is gone
+    def is_task_solved(self, screenshot):
         inputs = self.processor(images=Image.open(BytesIO(screenshot)), return_tensors="pt")
-        caption = self.model.generate(**inputs)
-        result = self.processor.decode(caption[0], skip_special_tokens=True)
+        caption_ids = self.model.generate(**inputs)
+        result = self.processor.decode(caption_ids[0], skip_special_tokens=True)
         return "captcha solved" in result.lower()
 
-    def solve_captcha(self):
-        while True:
-            screenshot = self.driver.get_screenshot_as_png()
-            if self.is_captcha_solved(screenshot):
-                break
-            action = self.decide_action(screenshot)
-            tool, selector, value = self.parse_action(action)
-            self.call_tool(tool, selector, value)
-            time.sleep(2)  # Give some time for the action to take effect
-
-    def parse_action(self, action):
-        # Parse the action string to extract tool, selector, and value
-        parts = action.split()
-        tool = parts[0]
-        selector = parts[2].strip("'")
-        value = int(parts[-1]) if tool == "drag" else None
-        return tool, selector, value
-
-# Example usage
-'''
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-agent = CaptchaSolvingAgent(driver)
-agent.solve_captcha()
-'''
