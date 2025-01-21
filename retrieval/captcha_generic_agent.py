@@ -6,33 +6,33 @@ from transformers import BlipProcessor, BlipForConditionalGeneration
 from smolagents import tool, ToolCallingAgent
 
 @tool
-def click(driver, selector: str) -> None:
+def click(driver: webdriver.Chrome, x: int, y: int) -> None:
     """
-    This tool clicks on a specified element on the web page.
+    This tool clicks on a specified absolute coordinate on the web page.
     Args:
         driver: The web driver instance.
-        selector: The CSS selector of the element to click.
+        x: The x-coordinate to click.
+        y: The y-coordinate to click.
     """
-    # TODO - don't find by selector, find by coordinates
-    element = driver.find_element(By.CSS_SELECTOR, selector)
-    element.click()
+    action = ActionChains(driver)
+    action.move_by_offset(x, y).click().perform()
 
 @tool
-def drag(driver, selector: str, offset_x: int) -> None:
+def drag(driver: webdriver.Chrome, start_x: int, start_y: int, end_x: int, end_y: int) -> None:
     """
-    This tool drags a specified element to a target position.
+    This tool drags from a specified start coordinate to an end coordinate.
     Args:
         driver: The web driver instance.
-        selector: The CSS selector of the element to drag.
-        offset_x: The horizontal offset to drag the element.
+        start_x: The starting x-coordinate.
+        start_y: The starting y-coordinate.
+        end_x: The ending x-coordinate.
+        end_y: The ending y-coordinate.
     """
-    # TODO - don't find by selector, find by coordinates
-    element = driver.find_element(By.CSS_SELECTOR, selector)
-    action = webdriver.common.action_chains.ActionChains(driver)
-    action.click_and_hold(element).move_by_offset(offset_x, 0).release().perform()
+    action = ActionChains(driver)
+    action.move_by_offset(start_x, start_y).click_and_hold().move_by_offset(end_x - start_x, end_y - start_y).release().perform()
 
 @tool
-def get_screenshot(driver) -> bytes:
+def get_screenshot(driver: webdriver.Chrome) -> bytes:
     """
     This tool captures the current screenshot of the web page.
     Args:
@@ -41,6 +41,20 @@ def get_screenshot(driver) -> bytes:
         A bytes object containing the screenshot.
     """
     return driver.get_screenshot_as_png()
+
+@tool
+def find_accept_button(screenshot: bytes) -> (int, int):
+    """
+    This tool finds the coordinates of the 'Accept' button in the screenshot.
+    Args:
+        screenshot: The screenshot of the web page.
+    Returns:
+        A tuple containing the x and y coordinates of the 'Accept' button.
+    """
+    # Implement image processing to locate the 'Accept' button
+    # This can be done using template matching, OCR, or other techniques
+    # For simplicity, let's assume we have a function `locate_button` that does this
+    return locate_button(screenshot, "Accept")  # You need to implement this function
 
 
 class CaptchaSolvingAgent(ToolCallingAgent):
@@ -53,18 +67,18 @@ class CaptchaSolvingAgent(ToolCallingAgent):
         tools = [click, drag, get_screenshot]
 
         prompt = (
-            "You are an agent responsible for solving CAPTCHAs on web pages. "
+            "You are an agent responsible for solving CAPTCHAs and interacting with modal boxes on web pages. "
             "You have access to the following tools: "
-            "- 'get_screenshot': Captures the current screenshot of the web page. "
-            "- 'click': Clicks on a specified element on the web page. "
-            "- 'drag': Drags a specified element to a target position. "
-            "Analyze the screenshot provided and determine the necessary actions to solve the CAPTCHA. "
-            "First, use 'get_screenshot' to capture the current state of the CAPTCHA. "
-            "Then, decide on the actions needed to solve the CAPTCHA, such as 'click' or 'drag'. "
+            "{{tool_descriptions}} "
+            "{{managed_agents_descriptions}} "
+            "Analyze the screenshot provided and determine the necessary actions to solve the CAPTCHA or interact with modal boxes. "
+            "First, use 'get_screenshot' to capture the current state of the CAPTCHA or modal box. "
+            "Then, decide on the actions needed, such as 'click' or 'drag'. "
             "Use the tools available to perform these actions. "
-            "Your goal is to solve the CAPTCHA and verify if the CAPTCHA is no longer present on the page."
+            "Your goal is to solve the CAPTCHA or interact with the modal box and verify if they are no longer present on the page."
         )
-        
+
+
         super().__init__(tools=tools, model=model, system_prompt=prompt)
 
     def is_task_solved(self, screenshot):
