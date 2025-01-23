@@ -1,7 +1,8 @@
 from PIL import Image
 from io import BytesIO
 from selenium import webdriver
-from transformers import GPT4VForConditionalGeneration
+from selenium.webdriver.common.action_chains import ActionChains
+from transformers import AutoModelForCausalLM
 from smolagents import tool, ToolCallingAgent
 
 
@@ -23,7 +24,7 @@ def get_screenshot(driver: webdriver.Chrome) -> bytes:
 class CaptchaSolvingAgent(ToolCallingAgent):
     def __init__(self, driver):
         self.driver = driver
-        self.model = GPT4VForConditionalGeneration.from_pretrained("openai/gpt-4v")
+        self.model = AutoModelForCausalLM.from_pretrained("openai/gpt-4v")
 
         tools = [click, drag, get_screenshot]
 
@@ -36,13 +37,19 @@ class CaptchaSolvingAgent(ToolCallingAgent):
             "First, use 'get_screenshot' to capture the current state of the CAPTCHA or modal box. "
             "Then, decide on the actions needed, such as 'click' or 'drag'. "
             "Use the tools available to perform these actions. "
-            "Your goal is to solve the CAPTCHA or interact with the modal box and verify if they are no longer present on the page."
+            "Your goal is to solve the CAPTCHA or interact with the modal box and verify if they are no longer present on the page. "
+            "Return 'true' if the CAPTCHA is solved, and 'false' if it is not."
         )
 
         super().__init__(tools=tools, model=self.model, system_prompt=prompt)
 
-    def is_task_solved(self, screenshot):
-        inputs = self.model(images=Image.open(BytesIO(screenshot)), return_tensors="pt")
-        caption_ids = self.model.generate(**inputs)
-        result = self.model.decode(caption_ids[0], skip_special_tokens=True)
-        return "captcha solved" in result.lower()
+
+# Example usage
+if __name__ == "__main__":
+    driver = webdriver.Chrome()  # Initialize the web driver
+    driver.get("https://www.marketwatch.com")  # Navigate to MarketWatch website
+    agent = CaptchaSolvingAgent(driver)
+
+    # Run the agent to solve the CAPTCHA
+    is_solved = agent.run()
+    print("CAPTCHA solved:", is_solved)
