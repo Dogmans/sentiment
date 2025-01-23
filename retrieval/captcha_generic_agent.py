@@ -1,8 +1,12 @@
+# TODO - make more sophisticated
+# https://huggingface.co/docs/smolagents/en/examples/multiagents
+
+
 from PIL import Image
 from io import BytesIO
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
-from transformers import AutoModelForCausalLM
+from transformers import BLIP2ForConditionalGeneration
 from smolagents import tool, ToolCallingAgent
 
 
@@ -24,7 +28,7 @@ def get_screenshot(driver: webdriver.Chrome) -> bytes:
 class CaptchaSolvingAgent(ToolCallingAgent):
     def __init__(self, driver):
         self.driver = driver
-        self.model = AutoModelForCausalLM.from_pretrained("openai/gpt-4v")
+        self.model = BLIP2ForConditionalGeneration.from_pretrained("Salesforce/blip2")
 
         tools = [click, drag, get_screenshot]
 
