@@ -42,7 +42,7 @@ class ArticleRetrieval:
                 text,
                 labels,
                 hypothesis_template=hypothesis_template,
-                multi_label=False
+                multi_label=True
             )
 
             return result['labels'][0] == "article" and result['scores'][0] > 0.7
@@ -123,17 +123,21 @@ class ArticleRetrieval:
             if not chunks:
                 return []
 
-            hypothesis_template = "This text is relevant to {label}"
+            hypothesis_template = "This text is relevant to {}"
             labels = [info['symbol'], info['shortName']]
 
             result = self.relevance_pipeline(
                 text,
                 labels,
                 hypothesis_template=hypothesis_template,
-                multi_label=False
+                multi_label=True
             )
 
-            return result['labels'][0] in labels and result['scores'][0] > 0.7
+            for i, label in enumerate(labels):
+                if result['scores'][i] > 0.7:
+                    return True
+
+            return False
 
         except Exception as e:
             print(f"Error determining relevance: {str(e)}")
