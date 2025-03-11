@@ -31,7 +31,8 @@ class TestNVDASentiment(unittest.TestCase):
         self.assertGreater(sentiment_score, -1, "Sentiment score should be greater than -1")
 
         self.assertLess(sentiment_score, 1, "Sentiment score should be less than 1")
-        
+
+        self.assertEqual(len(self.stock_data.articles), 3, "Incorrect number of articles retrieved for NVDA")        
 
         # Print sentiment information for visibility
 
