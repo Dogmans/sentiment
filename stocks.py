@@ -42,6 +42,7 @@ class Stock:
     db_url: str = 'sqlite:///ticker_cache.db'
 
     def __post_init__(self):
+        self.retrieval_classes = retrieval_classes
         self._articles = []
         self._init_db()
         self._ticker_data = self.load_cached_data() or self.fetch_and_cache_data()
@@ -91,7 +92,7 @@ class Stock:
 
         seen_urls = {article.link for article in self._articles}
 
-        for retrieval in retrieval_classes:
+        for retrieval in self.retrieval_classes:
             new_articles = retrieval.fetch_data(self._ticker_data)
             for article in new_articles:
                 if article.link not in seen_urls:

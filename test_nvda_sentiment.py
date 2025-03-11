@@ -10,29 +10,12 @@ class TestNVDASentiment(unittest.TestCase):
     def setUp(self):
 
         self.stock_data = Stock(
-
-            symbol="NVDA",
-
-            company_name="NVIDIA Corporation",
-
-            market_cap="1.2T",
-
-            price="500",
-
-            change="+2.5%",
-
-            revenue="12B"
+            symbol="NVDA"
         )
 
-        self.article_retrieval = TestArticleRetrieval()
-
+        self.stock_data.retrieval_classes = [TestArticleRetrieval()]
 
     def test_nvda_sentiment(self):
-
-        # Fetch and append articles
-
-        self.stock_data.fetch_and_append_articles(self.article_retrieval)
-        
 
         # Verify we have articles
 
