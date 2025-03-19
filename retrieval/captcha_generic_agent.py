@@ -74,12 +74,8 @@ if __name__ == "__main__":
     driver.get("https://www.marketwatch.com")  # Navigate to MarketWatch website
     agent = CaptchaSolvingAgent(driver)
 
-    # Define the task
-    task = {
-        "instruction": "Solve the CAPTCHA on the web page if it has one or click accept on modal boxes.",
-        "input": None  # You can add more details if needed
-    }
-
     # Run the agent to solve the CAPTCHA
-    is_solved = agent.run(task=task)
+    is_solved = agent.run(
+        "Solve the CAPTCHA on the web page if it has one or click accept on modal boxes."
+    )
     print("CAPTCHA solved:", is_solved)
