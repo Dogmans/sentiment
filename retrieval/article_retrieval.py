@@ -1,11 +1,15 @@
 import time
+from typing import List
+
 from bs4 import BeautifulSoup
 import nltk
-import torch
-from transformers import pipeline
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+import torch
+from transformers import pipeline
 from webdriver_manager.chrome import ChromeDriverManager
+from typing import List
+
 from .captcha_generic_agent import CaptchaSolvingAgent
 
 
@@ -116,29 +120,30 @@ class ArticleRetrieval:
             
         return []
 
-    def extract_relevant_chunks(self, text, info):
+    def extract_relevant_chunks(self, text, info) -> List[str]:
         try:
+            relevant_chunks = []
             text = self._preprocess_text(text)
             chunks = self.chunk_text(text)
-            if not chunks:
-                return []
 
-            hypothesis_template = "This text is relevant to {}"
-            labels = [info['symbol'], info['shortName']]
+            for chunk in chunks:
+                hypothesis_template = "This text is relevant to {}"
+                labels = [info['symbol'], info['shortName']]
 
-            result = self.relevance_pipeline(
-                text,
-                labels,
-                hypothesis_template=hypothesis_template,
-                multi_label=True
-            )
+                result = self.relevance_pipeline(
+                    chunk,
+                    labels,
+                    hypothesis_template=hypothesis_template,
+                    multi_label=True
+                )
 
-            for i, label in enumerate(labels):
-                if result['scores'][i] > 0.7:
-                    return True
+                for i, label in enumerate(labels):
+                    if result['scores'][i] > 0.7:
+                        relevant_chunks.append(chunk)
+                        break
 
-            return False
+            return relevant_chunks
 
         except Exception as e:
             print(f"Error determining relevance: {str(e)}")
-            return False
+            return []
